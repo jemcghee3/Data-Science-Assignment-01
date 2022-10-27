@@ -1,0 +1,724 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+Gwen claims certain attributes are not relevant. See the spreadsheet she attached on Moodle.
+These attributes WILL NOT be filled in.
+
+# Data Pre-Processing
+
+```{r}
+library(corrplot)
+library(ggplot2)
+library(tidyverse)
+library(fastDummies)
+library(GGally)
+```
+
+Get rid of old stuff
+```{r}
+rm(list=ls())
+par(mfrow=c(1,1))
+
+```
+
+```{r}
+# simple R program to read csv file using read.table()
+raw_data <- read.csv2("./LCdata.csv", header = TRUE, row.names=NULL, sep=";")
+
+
+head(raw_data)
+summary(raw_data)
+
+my_data <- raw_data
+```
+
+Start cleaning up the columns
+
+### id
+A unique LC assigned ID for the loan listing.
+
+Is: integer
+Should be: integer and non-zero
+```{r}
+filter(my_data, is.na(my_data$id)) # all are non-Null
+filter(my_data, id == 0) # all are non-zero
+filter(my_data, id < 0) # all are positive
+```
+### member_id
+A unique LC assigned Id for the borrower member.
+
+is: integer
+should be: integer, non-Null, non-zero
+```{r}
+filter(my_data, is.na(my_data$member_id)) # all are non-Null
+filter(my_data, member_id == 0) # all are non-zero
+filter(my_data, member_id < 0) # all are positive
+```
+
+
+### loan_amt
+The listed amount of the loan applied for by the borrower. If at some point in time, the credit department reduces the loan amount, then it will be reflected in this value.
+
+Is: integer
+Should be: integer, positive, non-zero, non-null
+
+Data Exploration:
+1.  Histogram of the loan_amt in various binwidths
+```{r}
+filter(my_data, is.na(my_data$loan_amnt)) # all are non-Null
+filter(my_data, my_data$loan_amnt == 0) # all are non-zero
+filter(my_data, my_data$loan_amnt < 0) # all are positive
+summary(my_data$loan_amnt)
+ggplot(data = my_data) +
+  geom_histogram(aes(x = loan_amnt), binwidth = 100)
+ggplot(data = my_data) +
+  geom_histogram(aes(x = loan_amnt), binwidth = 250)
+ggplot(data = my_data) +
+  geom_histogram(aes(x = loan_amnt), binwidth = 500)
+ggplot(data = my_data) +
+  geom_histogram(aes(x = loan_amnt), binwidth = 1000)
+```
+
+### funded_amnt
+The total amount committed to that loan at that point in time.
+
+is: integer
+should be: integer, non-null, non-negative
+
+clear work done on this column
+
+```{r}
+funded_amnt <-raw_data$funded_amnt
+```
+
+View the data
+```{r}
+
+head(my_data$funded_amnt)
+typeof(my_data$funded_amnt)
+summary(my_data$funded_amnt)
+filter(my_data, is.na(funded_amnt)) # no Null
+filter(my_data, funded_amnt == 0) # no Zero
+filter(my_data, funded_amnt < 0) # no negative
+```
+
+See where funded_amnt greater than, less than, equal to loan_amt
+
+Visualize them together
+```{r}
+ggplot(data = my_data) +
+  geom_point(aes(x = loan_amnt, y = funded_amnt), alpha = 0.05)
+
+```
+
+
+### funded_amnt_inv
+The total amount committed by investors for that loan at that point in time.
+is: character
+should be: integer (or double?)
+
+clear work done on this column
+```{r}
+funded_amnt_inv <-raw_data$funded_amnt_inv
+
+
+```
+
+Turn them into integers
+```{r}
+head(my_data$funded_amnt_inv)
+my_data$funded_amnt_inv <- as.integer(my_data$funded_amnt_inv)
+head(my_data$funded_amnt_inv)
+```
+
+See where funded_amnt_inv greater than, less than, equal to loan_amt
+```{r}
+ggplot(data = my_data) +
+  geom_point(aes(x = loan_amnt, y = funded_amnt_inv), alpha = 0.05)
+```
+This shows two different curves, indicating two different types of bowers receiving investor funding. What is the difference between the two types of borrowers?
+
+### term
+The number of payments on the loan. Values are in months and can be either 36 or 60.
+
+is: character, either " 36 months" or " 60 months"
+should be: integer, either 36 or 60 (to represent number of months). But does it even matter if it's essentially categorical?
+
+This is similar to a categorical variable. Perhaps it explains the two curves observed in funded_amt_inv. (note, no, it does not appear to after analysis)
+
+clear work done on this column
+```{r}
+term <-raw_data$term
+
+```
+
+
+Use this if keeping it as a string
+```{r}
+my_data$term <- str_trim(my_data$term)
+head(my_data$term)
+```
+
+visualizing the data
+```{r}
+ggplot(data = my_data, aes(x = term)) + 
+  geom_bar()
+```
+
+There are about twice as many 36 month loans as 60 month.
+
+Let's plot the funded_amnt_inv filtering by 36 month and 60 month
+```{r}
+ggplot(data = filter(my_data, term == "36 months"), mapping = aes(x = loan_amnt, y = funded_amnt_inv)) +
+    geom_point(alpha = .05)
+```
+
+This looks a lot like the other graph with no filtering.
+```{r}
+ggplot(data = filter(my_data, term == "60 months"), mapping = aes(x = loan_amnt, y = funded_amnt_inv)) +
+    geom_point(alpha = .05)
+
+```
+This shows three curves. 
+First, there is an upper curve where it begins linearly.
+Second, there is a discontinuity where the slope drastically changes towards 0 (and possibly appears to be upward curving?)
+Third, there is the lower curve, which appears more linear than those for 36 month terms, but still downward curving overall.
+
+
+Visualize term versus loan amount
+```{r}
+ggplot() + 
+  geom_boxplot(mapping = aes(x = term, y = loan_amnt), data = filter(my_data, term == "60 months")) + 
+  geom_boxplot(mapping = aes(x = term, y = loan_amnt), data = filter(my_data, term == "36 months"))
+```
+60 month loans are for more money than 36 month loans
+
+```{r}
+ggplot() + 
+  geom_boxplot(mapping = aes(x = term, y = funded_amnt), data = filter(my_data, term == "36 months")) + 
+  geom_boxplot(mapping = aes(x = term, y = funded_amnt), data = filter(my_data, term == "60 months"))
+```
+
+The below provides a worthless graph. Nearly all loans fund regardless of term.
+```{r}
+ggplot() + 
+  geom_boxplot(mapping = aes(x = term, y = funded_amnt / loan_amnt), data = filter(my_data, term == "36 months")) + 
+  geom_boxplot(mapping = aes(x = term, y = funded_amnt / loan_amnt), data = filter(my_data, term == "60 months"))
+```
+
+### int_rate
+Interest Rate on the loan
+
+is: character
+should be: float
+
+```{r}
+head(my_data$int_rate)
+my_data$int_rate <- as.double(my_data$int_rate)
+head(my_data$int_rate)
+
+
+```
+```{r}
+
+ggplot(my_data) +
+  geom_histogram(aes(x = int_rate), binwidth = .1)
+ggplot(my_data) +
+  geom_histogram(aes(x = int_rate), binwidth = .25)
+ggplot(my_data) +
+  geom_histogram(aes(x = int_rate), binwidth = .5)
+ggplot(my_data) +
+  geom_histogram(aes(x = int_rate), binwidth = 1)
+```
+
+Interest rate versus loan amount
+60 month loans have a higher starting interest rate, and there are very few under 10,000 loan amount
+```{r}
+ggplot(data = my_data, mapping = aes(x = loan_amnt, y = int_rate, color = term)) +
+    geom_point(alpha = .05)
+```
+
+### installment
+
+The monthly payment owed by the borrower if the loan originates.
+
+This should be directly correlated with the loan amount and interest rate and determined by term. It may be useful to use these values instead of those when say, comparing to income, in order to avoid calculation.
+
+Is: string
+Should be: double
+
+```{r}
+head(my_data$installment)
+my_data$installment <- as.double(my_data$installment)
+head(my_data$installment)
+```
+
+### emp_title
+
+The job title supplied by the Borrower when applying for the loan.*
+* Employer Title replaces Employer Name for all loans listed after 9/23/2013
+
+This is a string entered by the user and should be dropped.
+```{r}
+my_data <- subset(my_data, select = -emp_title)
+
+```
+
+### emp_length
+
+Employment length in years. Possible values are between 0 and 10 where 0 means less than one year and 10 means ten or more years. 
+
+Is: string
+Should be: Integer
+```{r}
+head(my_data$emp_length)
+
+my_data$emp_length <- as.integer(ordered(my_data$emp_length, levels = c("< 1 year", "1 year", "2 years", "3 years", "4 years", "5 years", "6 years", "7 years", "8 years", "9 years", "10+ years"))) - 1
+
+head(my_data$emp_length)
+```
+
+Search NA
+```{r}
+
+filter(my_data, is.na(my_data$emp_length))
+```
+More than 40,000 rows have no employment information. That seems like a lot to drop. How should we handle them?
+
+## home_ownership
+
+The home ownership status provided by the borrower during registration. Our values are: RENT, OWN, MORTGAGE, OTHER.
+
+Is: String
+Should be: Perhaps also an ordered set of integers ("OTHER", "RENT", "MORTGAGE", "OWN"). Could also make dummy columns, but this is my order if I were assessing borrowers.
+```{r}
+head(my_data$home_ownership)
+
+my_data$home_ownership <- as.integer(ordered(my_data$home_ownership, levels = c("OTHER", "RENT", "MORTGAGE", "OWN")))
+head(my_data$home_ownership)
+
+
+```
+
+Drop nulls. There are very few (47)
+```{r}
+filter(my_data, is.na(my_data$home_ownership))
+my_data <- filter(my_data, ! is.na(my_data$home_ownership))
+filter(my_data, is.na(my_data$home_ownership))
+```
+
+### annual_inc
+The self-reported annual income provided by the borrower during registration.
+
+Is: string
+should be: Int
+
+Filter for null, zero, negative
+```{r}
+filter(my_data, is.na(my_data$annual_inc)) # four items are non-Null, drop them.
+filter(my_data, my_data$annual_inc == 0) # two are zero income, but significant income from joint applicant, so don't drop them.
+filter(my_data, my_data$annual_inc < 10000) # 460 applicants.
+filter(my_data, my_data$annual_inc < 500) # only the two 0 income applicants
+filter(my_data, my_data$annual_inc < 0) # all are positive
+```
+
+Drop NA
+```{r}
+my_data <- filter(my_data, ! is.na(annual_inc))
+
+```
+
+```{r}
+
+head(my_data$annual_inc)
+my_data$annual_inc <- as.integer(my_data$annual_inc)
+head(my_data$annual_inc)
+```
+```{r}
+count(filter(my_data, verification_status == 0))
+```
+
+```{r}
+ggplot(data = filter(my_data, annual_inc > 1000000), aes(x = annual_inc, y = int_rate)) +
+         geom_point(aes(color = verification_status))
+```
+We should divide income over $1mil by 100 because presumably some of these people entered dollars and cents, but the system did not recognize that they were entering cents.
+```{r}
+filter(my_data, annual_inc > 1000000)
+```
+
+
+### verification_status
+
+is_inc_v in the dictionary
+Indicates if income was verified by LC, not verified, or if the income source was verified
+
+make it an integer, with not verified at 0 in order to show the gain from verified
+
+```{r}
+head(my_data$verification_status)
+my_data$verification_status <- as.integer(factor(my_data$verification_status)) - 1
+head(my_data$verification_status)
+
+```
+
+no NA
+```{r}
+filter(my_data, is.na(my_data$verification_status))
+```
+
+Does verification have a benefit? Yes
+```{r}
+lm.fit <- lm(int_rate~verification_status, my_data)
+summary(lm.fit)
+```
+
+```{r}
+ggplot(data = filter(my_data, verification_status == 0), aes(x = verification_status, y = int_rate)) +
+  geom_boxplot()
+ggplot(data = filter(my_data, verification_status == 1), aes(x = verification_status, y = int_rate)) +
+  geom_boxplot()
+ggplot(data = filter(my_data, verification_status == 2), aes(x = verification_status, y = int_rate)) +
+  geom_boxplot()
+```
+This is surprising that people with verified income have a higher interest rate than people with an unverified income.
+
+### issue_d
+The month which the loan was funded
+
+Is: string
+Should be: 
+
+Is this useful? Probably would imagine that interest rates change.
+
+Added the date as 01 in order to convert to a date.
+```{r}
+head(my_data$issue_d)
+f <- my_data$issue_d
+
+for (n in 1:length(f)){
+  f[n] <- paste("01-", f[n], sep = "")
+}
+my_data$issue_d <- as.Date(f, format = "%d-%b-%Y")
+head(my_data$issue_d)
+
+
+```
+
+See interest rate over time. I need to make a mean interest rate for each month, or maybe filter by term, to make this more helpful.
+```{r}
+ggplot(my_data, aes(x = issue_d, y = int_rate)) +
+  geom_line()
+```
+
+### loan_status
+Current status of the loan
+
+This is for after the loan is issued, so I don't think it will be useful in predicting interest rate.
+
+```{r}
+levels(factor(my_data$loan_status))
+```
+
+This applies only to current loans and should be deleted
+```{r}
+my_data <- subset(my_data, select = -loan_status)
+
+```
+
+### pymnt_plan
+
+Indicates if a payment plan has been put in place for the loan
+
+This applies only to current, defaulted loans and should be deleted
+```{r}
+my_data <- subset(my_data, select = -pymnt_plan)
+```
+
+### url
+
+URL for the LC page with listing data.
+
+This information is not relevant to analysis and should be dropped.
+```{r}
+my_data <- subset(my_data, select = -url)
+
+```
+
+### desc
+
+Loan description provided by the borrower
+
+This information could be important but would be impossible to analyse since it is user-entered.
+```{r}
+my_data <- subset(my_data, select = -desc)
+
+```
+
+### purpose
+
+A category provided by the borrower for the loan request. 
+
+Is: String
+Should be: Dummy columns.
+
+```{r}
+filter(my_data, is.na(my_data$purpose)) # all are non-Null
+```
+
+The answer here is relevant for the interest rate.
+```{r}
+levels(factor(my_data$purpose))
+ggplot(my_data, aes(x = purpose, y = int_rate)) +
+  geom_boxplot()
+
+```
+Should I remove the first dummy to guard against multicolliniarity?
+```{r}
+my_data <- dummy_columns(my_data, select_columns = "purpose", remove_selected_columns = TRUE)
+
+```
+
+Need to see whether each category has a good number of observations.
+
+### title
+
+The loan title provided by the borrower
+
+
+This information could be important but would be impossible to analyse since it is user-entered.
+```{r}
+my_data <- subset(my_data, select = -title)
+
+```
+
+### zip_code
+
+The first 3 numbers of the zip code provided by the borrower in the loan application.
+
+This information would indicate where in the country the borrower is located. It might be a relevant variable, but it would at best be an approximation of a borrower's income. I do not think it provides significant information.
+
+```{r}
+my_data <- subset(my_data, select = -zip_code)
+
+```
+
+
+### addr_state
+
+The state provided by the borrower in the loan application
+
+
+This information would indicate where in the country the borrower is located. It might be a relevant variable, but it would at best be an approximation of a borrower's income. I do not think it provides significant information.
+
+```{r}
+my_data <- subset(my_data, select = -addr_state)
+
+```
+
+### dti
+
+A ratio calculated using the borrower’s total monthly debt payments on the total debt obligations, excluding mortgage and the requested LC loan, divided by the borrower’s self-reported monthly income.
+
+Is: string
+Should be: double
+
+```{r}
+filter(my_data, is.na(dti)) # no Null
+filter(my_data, dti == 0) # 403 are zero, but this indicates no debt. Seems odd they turn to Lending Club for a loan if this is true.
+filter(my_data, dti < 1) # 3266 are below this ratio
+filter(my_data, dti < 0) # no negative
+```
+
+```{r}
+head(my_data$dti)
+f <- as.double(my_data$dti)
+head(f)
+```
+
+
+### delinq_2yrs
+
+The number of 30+ days past-due incidences of delinquency in the borrower's credit file for the past 2 years
+
+Is: Integer
+Should be: Integer
+```{r}
+typeof(my_data$delinq_2yrs)
+summary(my_data$delinq_2yrs)
+```
+
+There are 21 NAs. Drop them.
+```{r}
+my_data <- filter(my_data, ! is.na(my_data$delinq_2yrs))
+summary(my_data$delinq_2yrs)
+
+```
+
+
+### earliest_cr_line
+
+The month the borrower's earliest reported credit line was opened
+
+```{r}
+filter(my_data, is.na(earliest_cr_line)) # no NA
+```
+
+
+This could be a placeholder for the borrower's age. Is it correlated with interest rate? I would imagine that if this date is old, the person is old, so has a higher interest rate, and if young, low income, so higher interest rate. But this would simply be because of my expectations of income by age, and this data does not directly tell us anything.
+
+Added the date as 01 in order to convert to a date.
+```{r}
+head(my_data$earliest_cr_line)
+f <- my_data$earliest_cr_line
+
+for (n in 1:length(f)){
+  f[n] <- paste("01-", f[n], sep = "")
+}
+my_data$earliest_cr_line <- as.Date(f, format = "%d-%b-%Y")
+head(my_data$earliest_cr_line)
+
+
+```
+
+Drop the data as it is not really useful.
+```{r}
+my_data <- subset(my_data, select = -earliest_cr_line)
+
+```
+
+### inq_last_6mths
+
+The number of inquiries in past 6 months (excluding auto and mortgage inquiries)
+
+This represents how many times a lender has pulled the borrower's credit report. In itself it does not mean anything, but a higher value is taken as an indication that the borrower is not creditworthy (else, why ask for so much debt?) 0-2 is fine.
+
+There are no NA values
+
+```{r}
+head(my_data$inq_last_6mths)
+count(my_data, is.na(inq_last_6mths))
+```
+Plot the range
+```{r}
+ggplot(data = my_data, aes(x = inq_last_6mths)) +
+  geom_histogram(binwidth = 1)
+```
+Power law distribution.
+
+```{r}
+lm.1 <- lm(int_rate~inq_last_6mths, my_data)
+summary(lm.1)
+```
+This has a significant impact on interest rate.
+
+### mths_since_last_delinq
+
+The number of months since the borrower's last delinquency.
+
+This is the time that has passed since a buyer was delinquent. Approximately half of the entries are NA. *HOWEVER* if the borrower has never been delinquent (that is, always pays on time), it *SHOULD* be NA. NA is a better value than having anything here. *BUT* the data shows this is not actually true, and those with NA have a higher interest rate.
+
+Possible solutions: very, very high value to replace NA?
+
+```{r}
+levels(factor(my_data$mths_since_last_delinq))
+count(my_data, is.na(mths_since_last_delinq))
+```
+```{r}
+ggplot(data = my_data, aes(x = mths_since_last_delinq, y = int_rate)) +
+  geom_point(alpha = 0.05)
+```
+There is a hard cutoff at 84 months because those delinquencies are no longer reported on a credit report (7 years). There are still some observations beyond that time period, but I am not sure why. They may pre-date the change in the law (I recall this was sometime around 2009-2010) or loopholes that allow continuing reporting, or self-reporting to LendingClub.
+
+We need to figure out a way to deal with the <84, >=84 problem.
+
+```{r}
+count(my_data, mths_since_last_delinq == 83)
+count(my_data, mths_since_last_delinq == 84)
+
+
+```
+
+Those with an NA have a higher interest rate, which I would not expect.
+```{r}
+ggplot(data = my_data) +
+  geom_boxplot(mapping = aes(x = is.na(mths_since_last_delinq), y = int_rate))
+```
+
+
+### mths_since_last_record
+
+The number of months since the last public record.
+
+This would be the months since the last public record filing, which means a lawsuit to collect a debt.
+From my old credit report from 2015: "Public record information includes bankruptcies, liens or judgments and comes from federal, state or county court records." Today, they include only bankruptcies, but this is not relevant.
+
+This is very, very bad, and much better if it is NA (i.e. there are none)
+
+```{r}
+levels(factor(my_data$mths_since_last_record))
+count(my_data, is.na(mths_since_last_record))
+```
+
+```{r}
+ggplot(data = my_data, aes(x = mths_since_last_record, y = int_rate)) +
+  geom_point(alpha = 0.05)
+```
+I do not see a pattern appear.
+
+They also remain on your credit report for ten years during this time period (this is no longer true, but not relevant)
+
+
+```{r}
+count(my_data, mths_since_last_record == 119)
+count(my_data, mths_since_last_record == 120)
+
+```
+
+Thos with no public records have higher interest rates than those who do, which I would not expect.
+
+```{r}
+ggplot(data = my_data) +
+  geom_boxplot(mapping = aes(x = is.na(mths_since_last_record), y = int_rate))
+```
+
+### open_acc
+
+The number of open credit lines in the borrower's credit file.
+
+Is: Integer
+Should be: Integer
+
+I would expect this to be generally on the high side for users of this platform.
+
+
+```{r}
+typeof(my_data$open_acc)
+levels(factor(my_data$open_acc))
+count(my_data, is.na(open_acc)) # no NA
+```
+
+```{r}
+ggplot(data = my_data, aes(x = open_acc)) +
+  geom_histogram()
+
+summary(my_data$open_acc)
+```
+Is this associated with int_rate?
+```{r}
+lm.2 <- lm(int_rate~open_acc, my_data)
+summary(lm.2)
+```
+This says the interest rate goes down for people with more open accounts and that this is significant, which seems odd. The relationship is probably non-linear, if significant.
+
+### pub_rec
+
+
+
+```{r}
+
+head(my_data$dti_joint)
+f <- as.double(my_data$dti_joint)
+summary(f)
+```
