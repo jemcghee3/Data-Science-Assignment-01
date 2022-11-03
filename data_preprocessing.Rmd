@@ -23,7 +23,6 @@ par(mfrow=c(1,1))
 ```
 
 ```{r}
-# simple R program to read csv file using read.table()
 raw_data <- read.csv2("./LCdata.csv", header = TRUE, row.names=NULL, sep=";")
 
 
@@ -45,6 +44,13 @@ filter(my_data, is.na(my_data$id)) # all are non-Null
 filter(my_data, id == 0) # all are non-zero
 filter(my_data, id < 0) # all are positive
 ```
+
+Is not relevant to decision-making and should be dropped.
+```{r}
+my_data <- subset(my_data, select = -id)
+
+```
+
 ### member_id
 A unique LC assigned Id for the borrower member.
 
@@ -54,6 +60,19 @@ should be: integer, non-Null, non-zero
 filter(my_data, is.na(my_data$member_id)) # all are non-Null
 filter(my_data, member_id == 0) # all are non-zero
 filter(my_data, member_id < 0) # all are positive
+```
+
+This is probably not relevant, but it could be the case that a member has obtained prior loans, and then that could be very relevant for the interest rate on this loan.
+
+```{r}
+f <- filter(my_data, duplicated(my_data$member_id) == TRUE)
+f
+```
+This never actually happens. So better to drop it.
+
+```{r}
+my_data <- subset(my_data, select = -member_id)
+
 ```
 
 
@@ -141,6 +160,9 @@ This shows two different curves, indicating two different types of bowers receiv
 
 ### term
 The number of payments on the loan. Values are in months and can be either 36 or 60.
+
+
+*NOTE* Gwen says this will not be available in new loan applications, but this makes no sense as there is a distinct difference in interest rates for 36 month versus 60 month loans.
 
 is: character, either " 36 months" or " 60 months"
 should be: integer, either 36 or 60 (to represent number of months). But does it even matter if it's essentially categorical?
@@ -243,6 +265,12 @@ ggplot(data = my_data, mapping = aes(x = loan_amnt, y = int_rate, color = term))
 
 The monthly payment owed by the borrower if the loan originates.
 
+*Note* Gwen says this will not be available in the new data.
+```{r}
+my_data <- subset(my_data, select = -installment)
+```
+
+
 This should be directly correlated with the loan amount and interest rate and determined by term. It may be useful to use these values instead of those when say, comparing to income, in order to avoid calculation.
 
 Is: string
@@ -291,7 +319,7 @@ More than 40,000 rows have no employment information. That seems like a lot to d
 The home ownership status provided by the borrower during registration. Our values are: RENT, OWN, MORTGAGE, OTHER.
 
 Is: String
-Should be: Perhaps also an ordered set of integers ("OTHER", "RENT", "MORTGAGE", "OWN"). Could also make dummy columns, but this is my order if I were assessing borrowers.
+Should be: Perhaps also an ordered set of integers ("OTHER", "RENT", "MORTGAGE", "OWN"). Could also make dummy columns, but this is my order if I were assessing borrowers. We should compare both models.
 ```{r}
 head(my_data$home_ownership)
 
@@ -348,13 +376,24 @@ We should divide income over $1mil by 100 because presumably some of these peopl
 filter(my_data, annual_inc > 1000000)
 ```
 
+Needs a decision on the limit of income, where we will assume incorrect data entry. I assume $1,000,000 should have been $10,000.00, but it could be higher or lower.
+```{r}
+
+my_data$annual_inc <- ifelse(my_data$annual_inc >= 1000000, my_data$annual_inc / 100, my_data$annual_inc)
+filter(my_data, annual_inc > 1000000)
+
+
+summary(my_data$annual_inc)
+```
+
 
 ### verification_status
 
 is_inc_v in the dictionary
 Indicates if income was verified by LC, not verified, or if the income source was verified
 
-make it an integer, with not verified at 0 in order to show the gain from verified
+make it an integer, with not verified at 0 in order to show the gain from verified?
+Alternatively, make it dummy variables.
 
 ```{r}
 head(my_data$verification_status)
@@ -386,6 +425,11 @@ This is surprising that people with verified income have a higher interest rate 
 
 ### issue_d
 The month which the loan was funded
+
+*Note* Gwen says this will not be in new data.
+```{r}
+my_data <- subset(my_data, select = -issue_d)
+```
 
 Is: string
 Should be: 
@@ -856,7 +900,14 @@ my_data <- subset(my_data, select = -total_pymnt)
 
 ### total_pymnt_inv
 
+Payments received to date for portion of total amount funded by investors
 
+
+This is only relevant after a loan is issued and should be dropped.
+```{r}
+my_data <- subset(my_data, select = -total_pymnt_inv)
+
+```
 
 
 ```{r}
