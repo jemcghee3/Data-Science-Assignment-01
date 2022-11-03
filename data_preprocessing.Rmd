@@ -918,3 +918,8 @@ f <- as.double(my_data$dti_joint)
 summary(f)
 ```
 
+delete all columns according to "Assignment 1 - Some Remarks on Data Preprocessing" and also id and member_id
+```{r}
+my_data <- select(my_data, -c("collection_recovery_fee", "installment", "issue_d", "last_pymnt_amnt", "last_pymnt_d", "next_pymnt_d", "recoveries", "term", "total_pymnt_inv", "total_rec_int", "total_rec_late_fee", "total_rec_prncp", "id", "member_id")) 
+```
+
