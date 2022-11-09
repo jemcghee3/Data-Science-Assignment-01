@@ -214,7 +214,7 @@ Note: This will take a long time to run. The idea is to run it for each paramete
 ```{r}
 cv.error.10=rep(0,10)
 for (i in 1:10){
-    glm.fit = glm(int_rate ~ revol_util + poly(inq_last_6mths,7) + purpose_credit_card + verification_status_Verified + poly(annual_inc,10) + poly(funded_amnt_inv,10) + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + poly(revol_bal,3) + dti + initial_list_status_w + poly(pub_rec,i) + delinq_2yrs + purpose_home_improvement + total_pymnt + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical, data = model_data_no_na)
+    glm.fit = glm(int_rate ~ revol_util + poly(inq_last_6mths,7) + purpose_credit_card + verification_status_Verified + poly(annual_inc,10) + poly(funded_amnt_inv,10) + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + poly(revol_bal,3) + dti + initial_list_status_w + poly(pub_rec,3) + poly(delinq_2yrs,2) + purpose_home_improvement + poly(total_pymnt,i) + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical, data = model_data_no_na)
     cv.error.10[i] = cv.glm(model_data_no_na,glm.fit,K=5)$delta[1] # Setting K=5 means 5-fold CV
 }
 cv.error.10
@@ -224,25 +224,27 @@ best poly, k = 10
 revol_util: 1, but 2 is very close. After 3, goes quickly downhill
 [1] 1.313748e+01 1.313807e+01 1.335145e+01 1.615801e+01 4.257502e+03 9.881411e+05 2.779848e+08 1.779192e+09 4.979685e+14 2.452146e+15
 
-inq_last_6mths: 7, but may prefer 3 or 4 to keep it from overfitting
+inq_last_6mths: 7, but may prefer 3 or 4 to keep it from overfitting. Or go with 1 becaus none of these are that different.
 [1] 13.13672 13.08867 13.07047 13.06873 13.06840 13.06889 13.06828 13.07053 13.06983 13.08498
 
-annual_inc: 10, but may prefer 3 or 4 to keep it from overfitting
+annual_inc: 10, but may prefer 3 or 4 to keep it from overfitting. Or go with 1 becaus none of these are that different.
 [1] 13.06796 12.85943 12.78952 12.76273 12.76079 12.76030 12.76030 12.75972 12.75960 12.75934
 
 from here, only a k = 5
-funded_amnt_inv: 1, 2, 5, or 10
+funded_amnt_inv: 1, 2, 5, or 10. Or go with 1 becaus none of these are that different.
 [1] 12.75973 12.72842 12.75470 12.70118 12.67908 13.77973 12.66829 12.65892 12.64501 12.64331
 
-revol_bal: 3
+revol_bal: 3 or 1
  [1]     12.64375     12.62409     12.54643     12.54751     12.93488     27.34618    289.19445   8785.86063 533956.06421 224162.51917
 
 dti: 1
  [1] 1.254469e+01 1.269465e+01 1.281557e+01 1.070648e+02 1.321001e+03 1.250976e+06 6.864439e+07 6.882024e+08 2.999944e+11 5.651942e+15
 
-pub_rec:
+pub_rec: 3 Or go with 1 becaus none of these are that different on the left side.
+ [1]   12.55580   12.53535   12.53258   12.54563   12.81418   12.53925   12.65237   27.34062 1119.21629  152.12983
 
-delinq_2yrs:
+delinq_2yrs: 4 is the lowest, but not really different from 2
+ [1]   14.16914   12.50662   12.50743   12.49501   12.57875   12.61406   12.50057   18.79284   19.55115 1092.33130
 
 total_pymnt:
 
