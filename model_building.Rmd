@@ -119,6 +119,8 @@ sets_FWS <- regsubsets(int_rate ~ ., data.train, nvmax = 40, method = "forward")
 summary(sets_FWS)
 
 ```
+
+
 ```{r}
 initialize
 glm1 <- glm(int_rate ~ revol_util, data = data.train)
@@ -448,14 +450,13 @@ coef(m_ridge.1, s = best_lambda) # we can compare with ridge regression
 
 ```
 
-## Training the model on LASSO
+## Training the LASSO model
 ```{r}
 predictors.LASSO.Train <- model.matrix(int_rate ~ ., data.train)[,-1] # prepare format for glmnet
 outputs.LASSO.Train <- data.train$int_rate  # prepare format for glmnet
 m_ridge.LASSO.Train <- glmnet(predictors.LASSO.Train, outputs.LASSO.Train, alpha = 1) # do the fit
 
 ```
-
 
 ## Test the LASSO regression
 
@@ -492,10 +493,10 @@ cv.error.10
 poly(revol_util,2) is slightly better than 1, but only just.
 
 # Standardize data
-Maybe standardizing the data will improve the fit.
+Maybe standardizing the data will improve the fit. (it does not)
 ```{r}
 model_standard <- model_data_no_na %>% mutate_each_(list(~scale(.) %>% as.vector),
-                                  vars = c("revol_util", "inq_last_6mths", "annual_inc", "funded_amnt_inv", "revol_bal", "dti", "pub_rec", "delinq_2yrs", "total_pymnt", "total_acc", "open_acc", "acc_now_delinq"))
+                                  vars = c("revol_util", "inq_last_6mths", "annual_inc", "funded_amnt_inv", "revol_bal", "dti", "pub_rec", "delinq_2yrs", "total_pymnt", "total_acc", "open_acc", "acc_now_delinq", "loan_amnt")) #loan_amnt is added but not used
 ```
 
 ## Build test and training set
