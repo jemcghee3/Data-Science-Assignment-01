@@ -105,42 +105,48 @@ force_out <- c("mths_since_last_delinq", "mths_since_last_record", "mths_since_l
 model_data_no_na <- select(model_data, -force_out)
 colSums(is.na(model_data_no_na))
 ```
+```{r}
+set.seed(1)
+trainData <- sample(1:nrow(model_data_no_na), 0.7*nrow(model_data_no_na))
+data.train <- model_data_no_na[trainData,]
+data.test <- model_data_no_na[-trainData,]
+```
 
 
 1 linear dependency found. What parameters are co-linear?
 ```{r}
-sets_FWS <- regsubsets(int_rate ~ ., model_data_no_na, nvmax = 40, method = "forward")
+sets_FWS <- regsubsets(int_rate ~ ., data.train, nvmax = 40, method = "forward")
 summary(sets_FWS)
 
 ```
-
+Need to verify the different models are correct based on training data.
 ```{r}
 initialize
-glm1 <- glm(int_rate ~ revol_util, data = model_data_no_na)
-glm2 <- glm(int_rate ~ revol_util + inq_last_6mths, data = model_data_no_na)
-glm3 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card, data = model_data_no_na)
-glm4 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified, data = model_data_no_na)
-glm5 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc, data = model_data_no_na)
-glm6 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv, data = model_data_no_na)
-glm7 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation, data = model_data_no_na)
-glm8 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified`, data = model_data_no_na)
-glm9 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE, data = model_data_no_na)
-glm10 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal, data = model_data_no_na)
-glm11 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti, data = model_data_no_na)
-glm12 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti + initial_list_status_w, data = model_data_no_na)
-glm13 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti + initial_list_status_w + pub_rec, data = model_data_no_na)
-glm14 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti + initial_list_status_w + pub_rec + delinq_2yrs, data = model_data_no_na)
-glm15 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti + initial_list_status_w + pub_rec + delinq_2yrs + purpose_home_improvement, data = model_data_no_na)
-glm16 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti + initial_list_status_w + pub_rec + delinq_2yrs + purpose_home_improvement + total_pymnt, data = model_data_no_na)
-glm17 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti + initial_list_status_w + pub_rec + delinq_2yrs + purpose_home_improvement + total_pymnt + purpose_major_purchase, data = model_data_no_na)
-glm18 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti + initial_list_status_w + pub_rec + delinq_2yrs + purpose_home_improvement + total_pymnt + purpose_major_purchase + total_acc, data = model_data_no_na)
-glm19 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti + initial_list_status_w + pub_rec + delinq_2yrs + purpose_home_improvement + total_pymnt + purpose_major_purchase + total_acc + open_acc, data = model_data_no_na)
-glm20 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti + initial_list_status_w + pub_rec + delinq_2yrs + purpose_home_improvement + total_pymnt + purpose_major_purchase + total_acc + open_acc + acc_now_delinq, data = model_data_no_na)
-glm21 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti + initial_list_status_w + pub_rec + delinq_2yrs + purpose_home_improvement + total_pymnt + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business, data = model_data_no_na)
-glm22 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti + initial_list_status_w + pub_rec + delinq_2yrs + purpose_home_improvement + total_pymnt + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving, data = model_data_no_na)
-glm23 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti + initial_list_status_w + pub_rec + delinq_2yrs + purpose_home_improvement + total_pymnt + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other, data = model_data_no_na)
-glm24 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti + initial_list_status_w + pub_rec + delinq_2yrs + purpose_home_improvement + total_pymnt + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other + purpose_house, data = model_data_no_na)
-glm25 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + revol_bal + dti + initial_list_status_w + pub_rec + delinq_2yrs + purpose_home_improvement + total_pymnt + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical, data = model_data_no_na)
+glm1 <- glm(int_rate ~ revol_util, data = data.train)
+glm2 <- glm(int_rate ~ revol_util + inq_last_6mths, data = data.train)
+glm3 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card, data = data.train)
+glm4 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified, data = data.train)
+glm5 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc, data = data.train)
+glm6 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv, data = data.train)
+glm7 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation, data = data.train)
+glm8 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified`, data = data.train)
+glm9 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE, data = data.train)
+glm10 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w, data = data.train) # to here is good
+glm11 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal, data = data.train)
+glm12 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti, data = data.train)
+glm13 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec, data = data.train)
+glm14 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs, data = data.train)
+glm15 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt, data = data.train)
+glm16 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement, data = data.train)
+glm17 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase, data = data.train)
+glm18 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc, data = data.train)
+glm19 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc, data = data.train)
+glm20 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq, data = data.train)
+glm21 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business, data = data.train)
+glm22 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other, data = data.train)
+glm23 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving, data = data.train)
+glm24 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house, data = data.train)
+glm25 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house + purpose_medical, data = data.train)
 ```
 
 
@@ -148,31 +154,31 @@ We do a 10-fold cross-validation
 
 ```{r}
 set.seed(1)
-cv.err.glm1 <- cv.glm(model_data_no_na, glm1, K = 10) 
-cv.err.glm2 <- cv.glm(model_data_no_na, glm2, K = 10) 
-cv.err.glm3 <- cv.glm(model_data_no_na, glm3, K = 10) 
-cv.err.glm4 <- cv.glm(model_data_no_na, glm4, K = 10) 
-cv.err.glm5 <- cv.glm(model_data_no_na, glm5, K = 10)
-cv.err.glm6 <- cv.glm(model_data_no_na, glm6, K = 10) 
-cv.err.glm7 <- cv.glm(model_data_no_na, glm7, K = 10) 
-cv.err.glm8 <- cv.glm(model_data_no_na, glm8, K = 10)
-cv.err.glm9 <- cv.glm(model_data_no_na, glm9, K = 10)
-cv.err.glm10 <- cv.glm(model_data_no_na, glm10, K = 10)
-cv.err.glm11 <- cv.glm(model_data_no_na, glm11, K = 10)
-cv.err.glm12 <- cv.glm(model_data_no_na, glm12, K = 10)
-cv.err.glm13 <- cv.glm(model_data_no_na, glm13, K = 10)
-cv.err.glm14 <- cv.glm(model_data_no_na, glm14, K = 10)
-cv.err.glm15 <- cv.glm(model_data_no_na, glm15, K = 10)
-cv.err.glm16 <- cv.glm(model_data_no_na, glm16, K = 10)
-cv.err.glm17 <- cv.glm(model_data_no_na, glm17, K = 10)
-cv.err.glm18 <- cv.glm(model_data_no_na, glm18, K = 10)
-cv.err.glm19 <- cv.glm(model_data_no_na, glm19, K = 10)
-cv.err.glm20 <- cv.glm(model_data_no_na, glm20, K = 10)
-cv.err.glm21 <- cv.glm(model_data_no_na, glm21, K = 10)
-cv.err.glm22 <- cv.glm(model_data_no_na, glm22, K = 10)
-cv.err.glm23 <- cv.glm(model_data_no_na, glm23, K = 10)
-cv.err.glm24 <- cv.glm(model_data_no_na, glm24, K = 10)
-cv.err.glm25 <- cv.glm(model_data_no_na, glm25, K = 10)
+cv.err.glm1 <- cv.glm(data.train, glm1, K = 10) 
+cv.err.glm2 <- cv.glm(data.train, glm2, K = 10) 
+cv.err.glm3 <- cv.glm(data.train, glm3, K = 10) 
+cv.err.glm4 <- cv.glm(data.train, glm4, K = 10) 
+cv.err.glm5 <- cv.glm(data.train, glm5, K = 10)
+cv.err.glm6 <- cv.glm(data.train, glm6, K = 10) 
+cv.err.glm7 <- cv.glm(data.train, glm7, K = 10) 
+cv.err.glm8 <- cv.glm(data.train, glm8, K = 10)
+cv.err.glm9 <- cv.glm(data.train, glm9, K = 10)
+cv.err.glm10 <- cv.glm(data.train, glm10, K = 10)
+cv.err.glm11 <- cv.glm(data.train, glm11, K = 10)
+cv.err.glm12 <- cv.glm(data.train, glm12, K = 10)
+cv.err.glm13 <- cv.glm(data.train, glm13, K = 10)
+cv.err.glm14 <- cv.glm(data.train, glm14, K = 10)
+cv.err.glm15 <- cv.glm(data.train, glm15, K = 10)
+cv.err.glm16 <- cv.glm(data.train, glm16, K = 10)
+cv.err.glm17 <- cv.glm(data.train, glm17, K = 10)
+cv.err.glm18 <- cv.glm(data.train, glm18, K = 10)
+cv.err.glm19 <- cv.glm(data.train, glm19, K = 10)
+cv.err.glm20 <- cv.glm(data.train, glm20, K = 10)
+cv.err.glm21 <- cv.glm(data.train, glm21, K = 10)
+cv.err.glm22 <- cv.glm(data.train, glm22, K = 10)
+cv.err.glm23 <- cv.glm(data.train, glm23, K = 10)
+cv.err.glm24 <- cv.glm(data.train, glm24, K = 10)
+cv.err.glm25 <- cv.glm(data.train, glm25, K = 10)
 ```
 
 
@@ -218,8 +224,8 @@ Note: This will take a long time to run. The idea is to run it for each paramete
 ```{r}
 cv.error.10=rep(0,10)
 for (i in 1:10){
-    glm.fit = glm(int_rate ~ revol_util + poly(inq_last_6mths,7) + purpose_credit_card + verification_status_Verified + poly(annual_inc,10) + poly(funded_amnt_inv,10) + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + poly(revol_bal,3) + dti + initial_list_status_w + poly(pub_rec,3) + poly(delinq_2yrs,2) + purpose_home_improvement + poly(total_pymnt,i) + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical, data = model_data_no_na)
-    cv.error.10[i] = cv.glm(model_data_no_na,glm.fit,K=5)$delta[1] # Setting K=5 means 5-fold CV
+    glm.fit = glm(int_rate ~ revol_util + poly(inq_last_6mths,7) + purpose_credit_card + verification_status_Verified + poly(annual_inc,10) + poly(funded_amnt_inv,10) + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + poly(revol_bal,3) + dti + initial_list_status_w + poly(pub_rec,3) + poly(delinq_2yrs,2) + purpose_home_improvement + poly(total_pymnt,i) + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical, data = data.train)
+    cv.error.10[i] = cv.glm(data.train,glm.fit,K=5)$delta[1] # Setting K=5 means 5-fold CV
 }
 cv.error.10
 ```
@@ -263,31 +269,31 @@ acc_now_delinq:
 See if a 5-fold gives us anything different
 ```{r}
 set.seed(1)
-cv.err.glm1.5 <- cv.glm(model_data_no_na, glm1, K = 5) 
-cv.err.glm2.5 <- cv.glm(model_data_no_na, glm2, K = 5) 
-cv.err.glm3.5 <- cv.glm(model_data_no_na, glm3, K = 5) 
-cv.err.glm4.5 <- cv.glm(model_data_no_na, glm4, K = 5) 
-cv.err.glm5.5 <- cv.glm(model_data_no_na, glm5, K = 5)
-cv.err.glm6.5 <- cv.glm(model_data_no_na, glm6, K = 5) 
-cv.err.glm7.5 <- cv.glm(model_data_no_na, glm7, K = 5) 
-cv.err.glm8.5 <- cv.glm(model_data_no_na, glm8, K = 5)
-cv.err.glm9.5 <- cv.glm(model_data_no_na, glm9, K = 5)
-cv.err.glm10.5 <- cv.glm(model_data_no_na, glm10, K = 5)
-cv.err.glm11.5 <- cv.glm(model_data_no_na, glm11, K = 5)
-cv.err.glm12.5 <- cv.glm(model_data_no_na, glm12, K = 5)
-cv.err.glm13.5 <- cv.glm(model_data_no_na, glm13, K = 5)
-cv.err.glm14.5 <- cv.glm(model_data_no_na, glm14, K = 5)
-cv.err.glm15.5 <- cv.glm(model_data_no_na, glm15, K = 5)
-cv.err.glm16.5 <- cv.glm(model_data_no_na, glm16, K = 5)
-cv.err.glm17.5 <- cv.glm(model_data_no_na, glm17, K = 5)
-cv.err.glm18.5 <- cv.glm(model_data_no_na, glm18, K = 5)
-cv.err.glm19.5 <- cv.glm(model_data_no_na, glm19, K = 5)
-cv.err.glm20.5 <- cv.glm(model_data_no_na, glm20, K = 5)
-cv.err.glm21.5 <- cv.glm(model_data_no_na, glm21, K = 5)
-cv.err.glm22.5 <- cv.glm(model_data_no_na, glm22, K = 5)
-cv.err.glm23.5 <- cv.glm(model_data_no_na, glm23, K = 5)
-cv.err.glm24.5 <- cv.glm(model_data_no_na, glm24, K = 5)
-cv.err.glm25.5 <- cv.glm(model_data_no_na, glm25, K = 5)
+cv.err.glm1.5 <- cv.glm(data.train, glm1, K = 5) 
+cv.err.glm2.5 <- cv.glm(data.train, glm2, K = 5) 
+cv.err.glm3.5 <- cv.glm(data.train, glm3, K = 5) 
+cv.err.glm4.5 <- cv.glm(data.train, glm4, K = 5) 
+cv.err.glm5.5 <- cv.glm(data.train, glm5, K = 5)
+cv.err.glm6.5 <- cv.glm(data.train, glm6, K = 5) 
+cv.err.glm7.5 <- cv.glm(data.train, glm7, K = 5) 
+cv.err.glm8.5 <- cv.glm(data.train, glm8, K = 5)
+cv.err.glm9.5 <- cv.glm(data.train, glm9, K = 5)
+cv.err.glm10.5 <- cv.glm(data.train, glm10, K = 5)
+cv.err.glm11.5 <- cv.glm(data.train, glm11, K = 5)
+cv.err.glm12.5 <- cv.glm(data.train, glm12, K = 5)
+cv.err.glm13.5 <- cv.glm(data.train, glm13, K = 5)
+cv.err.glm14.5 <- cv.glm(data.train, glm14, K = 5)
+cv.err.glm15.5 <- cv.glm(data.train, glm15, K = 5)
+cv.err.glm16.5 <- cv.glm(data.train, glm16, K = 5)
+cv.err.glm17.5 <- cv.glm(data.train, glm17, K = 5)
+cv.err.glm18.5 <- cv.glm(data.train, glm18, K = 5)
+cv.err.glm19.5 <- cv.glm(data.train, glm19, K = 5)
+cv.err.glm20.5 <- cv.glm(data.train, glm20, K = 5)
+cv.err.glm21.5 <- cv.glm(data.train, glm21, K = 5)
+cv.err.glm22.5 <- cv.glm(data.train, glm22, K = 5)
+cv.err.glm23.5 <- cv.glm(data.train, glm23, K = 5)
+cv.err.glm24.5 <- cv.glm(data.train, glm24, K = 5)
+cv.err.glm25.5 <- cv.glm(data.train, glm25, K = 5)
 ```
 
 
@@ -309,7 +315,7 @@ It gives me model 24 as the best
 
 Stepwise backward selection
 ```{r}
-sets_BWS <- regsubsets(int_rate ~ ., model_data_no_na, nvmax = 40, method = "backward")
+sets_BWS <- regsubsets(int_rate ~ ., data.train, nvmax = 40, method = "backward")
 summary(sets_BWS)
 ```
 
