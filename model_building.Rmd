@@ -360,6 +360,7 @@ glm.fit.best.pred <- predict(glm.fit.best, newdata = data.test)
 int_rate.test <- data.test$int_rate
 plot(glm.fit.best.pred,int_rate.test)
 abline (0,1)
+(MSE_glm <- mean((data.test$int_rate-glm.fit.best.pred)^2)) 
 
 ```
 This is not great. We need to increase the slope. Also why are some interest rate predictions negative?
@@ -463,7 +464,7 @@ We can use the predict() function to make predictions with LASSO regression
 predictors.LASSO.Test <- model.matrix(int_rate ~ ., data.test)[,-1] # prepare format for glmnet
 LASSO.pred <- predict(m_ridge.LASSO.Train, newx = predictors.LASSO.Test, s = best_lambda_LASSO) # s specifies the lambda to use
 # Compute MSE just for fun - maybe to compare later with other models
-(MSE_ridge <- mean((data.test$int_rate-LASSO.pred)^2)) 
+(MSE_LASSO <- mean((data.test$int_rate-LASSO.pred)^2)) 
           
 ```
 This is not a significantly different MSE from the glm.25 or glm.fit.best model, or the ridge regression.
@@ -487,4 +488,43 @@ for (i in 1:10){
 }
 cv.error.10
 ```
+[1] 25.16243 25.15573 25.19109 25.21601 27.53920 25.20314 25.23525 25.22842 25.97635 25.20173
+poly(revol_util,2) is slightly better than 1, but only just.
 
+# Standardize data
+Maybe standardizing the data will improve the fit.
+```{r}
+model_standard <- model_data_no_na %>% mutate_each_(list(~scale(.) %>% as.vector),
+                                  vars = c("revol_util", "inq_last_6mths", "annual_inc", "funded_amnt_inv", "revol_bal", "dti", "pub_rec", "delinq_2yrs", "total_pymnt", "total_acc", "open_acc", "acc_now_delinq"))
+```
+
+## Build test and training set
+```{r}
+trainData.standard <- sample(1:nrow(model_standard), 0.7*nrow(model_standard))
+data.standard.train <- model_standard[trainData,]
+data.standard.test <- model_standard[-trainData,]
+```
+
+## Fit the parameters to the model
+
+```{r}
+glm.standard.fit.best = glm(int_rate ~ revol_util + poly(inq_last_6mths,4) + purpose_credit_card + verification_status_Verified + poly(annual_inc,7) + poly(funded_amnt_inv,10) + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + poly(revol_bal,3) + dti + initial_list_status_w + poly(pub_rec,3) + poly(delinq_2yrs,2) + purpose_home_improvement + poly(total_pymnt,8) + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical, data = data.standard.train)
+summary(glm.standard.fit.best)
+```
+
+
+## Test the fitted model
+
+```{r}
+glm.fit.standard.best.pred <- predict(glm.standard.fit.best, newdata = data.standard.test)
+
+```
+
+```{r}
+int_rate.test <- data.standard.test$int_rate
+plot(glm.fit.standard.best.pred,int_rate.test)
+abline (0,1)
+(MSE_standard <- mean((data.standard.test$int_rate-glm.fit.standard.best.pred)^2)) 
+
+```
+This did not improve the situation. MSE went down to 12.39, which is exactly the same as in the glm model.
