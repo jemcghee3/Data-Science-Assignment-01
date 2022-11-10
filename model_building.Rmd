@@ -148,7 +148,7 @@ glm23 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + veri
 glm24 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house, data = data.train)
 glm25 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house + purpose_medical, data = data.train)
 ```
-
+test
 
 We do a 10-fold cross-validation
 
