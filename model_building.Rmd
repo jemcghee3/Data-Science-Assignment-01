@@ -13,9 +13,10 @@ par(mfrow=c(1,1))
 
 library(tidyverse)
 library(leaps) # contanis regsubset()
-library(fastDummies)
-library(corrplot)
+library(fastDummies) # to make dummy variables
+library(corrplot) # for visualization but probably not needed in final.
 library(boot) # load library boot to use cv.glm
+library(glmnet) # for ridge regression and lasso regression
 
 raw_data <- read.csv2("./LCdata.csv", header = TRUE, row.names=NULL, sep=";")
 
@@ -83,9 +84,6 @@ model_data <- my_data #make test modeling data
 
 
 
-linear models
-
-Stepwise forward selection
 
 
 
@@ -105,6 +103,8 @@ force_out <- c("mths_since_last_delinq", "mths_since_last_record", "mths_since_l
 model_data_no_na <- select(model_data, -force_out)
 colSums(is.na(model_data_no_na))
 ```
+# Build a Linear Model
+
 ```{r}
 set.seed(1)
 trainData <- sample(1:nrow(model_data_no_na), 0.7*nrow(model_data_no_na))
@@ -119,7 +119,6 @@ sets_FWS <- regsubsets(int_rate ~ ., data.train, nvmax = 40, method = "forward")
 summary(sets_FWS)
 
 ```
-Need to verify the different models are correct based on training data.
 ```{r}
 initialize
 glm1 <- glm(int_rate ~ revol_util, data = data.train)
@@ -131,7 +130,7 @@ glm6 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verif
 glm7 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation, data = data.train)
 glm8 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified`, data = data.train)
 glm9 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE, data = data.train)
-glm10 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w, data = data.train) # to here is good
+glm10 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w, data = data.train)
 glm11 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal, data = data.train)
 glm12 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti, data = data.train)
 glm13 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec, data = data.train)
@@ -148,7 +147,7 @@ glm23 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + veri
 glm24 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house, data = data.train)
 glm25 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house + purpose_medical, data = data.train)
 ```
-
+# Cross-validation for parameter selection
 
 We do a 10-fold cross-validation
 
@@ -219,12 +218,17 @@ purpose_debt_consolidation <-> purpose_other
 
 Some of the other purposes are semi-highly correlated (60-70). May be worth a look.
 
+*Note* Gwen confirmed that none of this matters because each loan would only have one purpose.
+
+
+# Tune the model with the parameters we found by increasing flexibility
+Note that this will not find the optimal model. Maybe int_rate ~ poly(revol_util,3) and nothing else is the best model, and this will never test that.
 
 Note: This will take a long time to run. The idea is to run it for each parameter we choose.
 ```{r}
 cv.error.10=rep(0,10)
 for (i in 1:10){
-    glm.fit = glm(int_rate ~ revol_util + poly(inq_last_6mths,7) + purpose_credit_card + verification_status_Verified + poly(annual_inc,10) + poly(funded_amnt_inv,10) + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + poly(revol_bal,3) + dti + initial_list_status_w + poly(pub_rec,3) + poly(delinq_2yrs,2) + purpose_home_improvement + poly(total_pymnt,i) + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical, data = data.train)
+    glm.fit = glm(int_rate ~ revol_util + poly(inq_last_6mths,4) + purpose_credit_card + verification_status_Verified + poly(annual_inc,10) + poly(funded_amnt_inv,10) + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + poly(revol_bal,3) + dti + initial_list_status_w + poly(pub_rec,3) + poly(delinq_2yrs,2) + purpose_home_improvement + poly(total_pymnt,i) + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical, data = data.train)
     cv.error.10[i] = cv.glm(data.train,glm.fit,K=5)$delta[1] # Setting K=5 means 5-fold CV
 }
 cv.error.10
@@ -234,10 +238,10 @@ best poly, k = 10
 revol_util: 1, but 2 is very close. After 3, goes quickly downhill
 [1] 1.313748e+01 1.313807e+01 1.335145e+01 1.615801e+01 4.257502e+03 9.881411e+05 2.779848e+08 1.779192e+09 4.979685e+14 2.452146e+15
 
-inq_last_6mths: 7, but may prefer 3 or 4 to keep it from overfitting. Or go with 1 becaus none of these are that different.
+inq_last_6mths: 7, but may prefer 3 or 4 to keep it from overfitting. Or go with 1 becaus none of these are that different. Looking at the model run on test data, the p value starts being too large after 4, so we will go with 4.
 [1] 13.13672 13.08867 13.07047 13.06873 13.06840 13.06889 13.06828 13.07053 13.06983 13.08498
 
-annual_inc: 10, but may prefer 3 or 4 to keep it from overfitting. Or go with 1 becaus none of these are that different.
+annual_inc: 10, but may prefer 3 or 4 to keep it from overfitting. Or go with 1 becaus none of these are that different. 7 has a very similar standard error but a better p value in the fitted model.
 [1] 13.06796 12.85943 12.78952 12.76273 12.76079 12.76030 12.76030 12.75972 12.75960 12.75934
 
 from here, only a k = 5
@@ -332,3 +336,143 @@ plot(sets_FWS, scale="bic", title(main="Backward Stepwise"))
 par(mfrow=c(1,1))
 ```
 
+
+
+
+
+
+# Fit the parameters to the model
+
+```{r}
+glm.fit.best = glm(int_rate ~ revol_util + poly(inq_last_6mths,4) + purpose_credit_card + verification_status_Verified + poly(annual_inc,7) + poly(funded_amnt_inv,10) + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + poly(revol_bal,3) + dti + initial_list_status_w + poly(pub_rec,3) + poly(delinq_2yrs,2) + purpose_home_improvement + poly(total_pymnt,8) + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical, data = data.train)
+summary(glm.fit.best)
+```
+
+
+# Test the fitted model
+
+```{r}
+glm.fit.best.pred <- predict(glm.fit.best, newdata = data.test)
+
+```
+
+```{r}
+int_rate.test <- data.test$int_rate
+plot(glm.fit.best.pred,int_rate.test)
+abline (0,1)
+
+```
+This is not great. We need to increase the slope. Also why are some interest rate predictions negative?
+
+
+# Ridge Regression
+
+```{r}
+predictors <- model.matrix(int_rate ~ ., data.train)[,-1] #remove the first column, which is the intercept. glmnet doesn't need that
+head(predictors)
+outputs <- data.train$int_rate # creating a vector to hold the response variable
+
+```
+```{r}
+m_ridge.1 <- glmnet(predictors, outputs, alpha = 0)
+dim(coef(m_ridge.1))
+m_ridge.1
+plot(m_ridge.1, label=TRUE)
+```
+## cross-validation to select the best lambda
+```{r}
+(cv_ridge <- cv.glmnet(predictors, outputs, alpha = 0) )
+
+```
+Measure: Mean-Squared Error 
+
+    Lambda Index Measure      SE Nonzero
+min 0.1167   100   13.15 0.04104      40
+1se 0.3565    88   13.19 0.04016      40
+
+```{r}
+plot(cv_ridge)
+(best_lambda <- cv_ridge$lambda.min)
+coef(m_ridge.1, s=best_lambda)
+
+```
+
+## Training the model on ridge regression
+```{r}
+predictors.Train <- model.matrix(int_rate ~ ., data.train)[,-1] # prepare format for glmnet
+outputs.Train <- data.train$int_rate  # prepare format for glmnet
+m_ridge.Train <- glmnet(predictors.Train, outputs.Train, alpha = 0) # do the fit
+
+```
+
+
+## Test the ridge regression
+
+We can use the predict() function to make predictions with ridge regression
+```{r}
+predictors.Test <- model.matrix(int_rate ~ ., data.test)[,-1] # prepare format for glmnet
+ridge.pred <- predict(m_ridge.Train, newx = predictors.Test, s = best_lambda) # s specifies the lambda to use
+# Compute MSE just for fun - maybe to compare later with other models
+(MSE_ridge <- mean((data.test$int_rate-ridge.pred)^2)) 
+          
+```
+This is not a significantly different MSE from the glm.25 or glm.fit.best model.
+
+
+
+```{r}
+plot(ridge.pred,int_rate.test)
+abline (0,1)
+```
+
+This has the same issue that it needs to increase the slope. It overpredicts on the bottom end and underpredicts on the top end.
+
+# LASSO
+
+```{r}
+m_LASSO <- glmnet(predictors, outputs, alpha = 1)
+dim(coef(m_LASSO))
+```
+
+
+```{r}
+m_LASSO # we see that some of the coefficients are set to 0
+plot(m_LASSO, label = TRUE)
+(cv_LASSO <- cv.glmnet(predictors, outputs, alpha = 1))
+plot(cv_LASSO)
+(best_lambda_LASSO <- cv_LASSO$lambda.min) #best lambda is very small, but lambda 1se is considerably larger
+coef(m_LASSO, s = best_lambda_LASSO) # for small lambda almost all coefficients are included
+coef(m_LASSO, s = cv_LASSO$lambda.1se) # We can try again with lambda.1se
+coef(m_ridge.1, s = best_lambda) # we can compare with ridge regression
+
+```
+
+## Training the model on LASSO
+```{r}
+predictors.LASSO.Train <- model.matrix(int_rate ~ ., data.train)[,-1] # prepare format for glmnet
+outputs.LASSO.Train <- data.train$int_rate  # prepare format for glmnet
+m_ridge.LASSO.Train <- glmnet(predictors.LASSO.Train, outputs.LASSO.Train, alpha = 1) # do the fit
+
+```
+
+
+## Test the LASSO regression
+
+We can use the predict() function to make predictions with LASSO regression
+```{r}
+predictors.LASSO.Test <- model.matrix(int_rate ~ ., data.test)[,-1] # prepare format for glmnet
+LASSO.pred <- predict(m_ridge.LASSO.Train, newx = predictors.LASSO.Test, s = best_lambda_LASSO) # s specifies the lambda to use
+# Compute MSE just for fun - maybe to compare later with other models
+(MSE_ridge <- mean((data.test$int_rate-LASSO.pred)^2)) 
+          
+```
+This is not a significantly different MSE from the glm.25 or glm.fit.best model, or the ridge regression.
+
+
+
+```{r}
+plot(LASSO.pred,int_rate.test)
+abline (0,1)
+```
+
+The exact same problem appears, where it over predicts the interest rate on the low end and under predicts it on the high end.
