@@ -5,7 +5,7 @@ output: html_notebook
 This is to organize our models. Pull the code cleaning the data from data_preprocessing.Rmd.
 This file is separate because we have visualizations and other attempts to see how to clean the data the best in that file.
 This file contains our best cleaning methods.
-
+dd
 Load the data and clean it:
 ```{r}
 rm(list=ls())
