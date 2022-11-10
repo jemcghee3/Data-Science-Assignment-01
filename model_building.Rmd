@@ -61,7 +61,7 @@ my_data$emp_length <- as.integer(ordered(my_data$emp_length, levels = c("< 1 yea
 my_data <- my_data %>%  # note this drops 40,000 records
   drop_na(emp_length)
 my_data <- filter(my_data, ! is.na(my_data$home_ownership))
-my_data <- filter(my_data, ! is.na(annual_inc))
+my_data <- filter(my_data, ! is.na(my_data$annual_inc))
 my_data <- filter(my_data, ! is.na(my_data$delinq_2yrs))
 my_data <- filter(my_data, ! is.na(my_data$revol_bal))
 my_data <- filter(my_data, ! is.na(my_data$revol_util))
@@ -183,6 +183,10 @@ x <- 1:25 # define the x-axes (number of predictors)
 plot(cv.err ~x)
 lines(cv.err ~x)
 ```
+ [1] 17.86582 16.62822 15.86358 15.33236 14.99542 14.43929 14.23070 14.05053 13.93383 13.83293 13.71637 13.60494 13.53000 13.45494 13.39076 13.32795 13.28365
+[18] 13.23878 13.19996 13.18435 13.17490 13.16831 13.15635 13.14714 13.13729
+
+
 
 Here it's hard again to see which model wins. 
 To see it more clearly, we find the minimum:
@@ -246,7 +250,7 @@ pub_rec: 3 Or go with 1 becaus none of these are that different on the left side
 delinq_2yrs: 4 is the lowest, but not really different from 2
  [1]   14.16914   12.50662   12.50743   12.49501   12.57875   12.61406   12.50057   18.79284   19.55115 1092.33130
 
-total_pymnt:
+total_pymnt: 8 is the minimum. But not really different from 1
  [1] 12.50376 12.50533 13.49381 12.47696 12.45606 12.45684 13.94445 12.45178 12.46844 12.47446
 
 total_acc:
