@@ -38,7 +38,7 @@ my_data <- subset(my_data, select = -out_prncp)
 my_data <- subset(my_data, select = -out_prncp_inv)
 my_data <- subset(my_data, select = -last_credit_pull_d)
 my_data <- subset(my_data, select = -policy_code)
-my_data <- subset(my_data, select = -funded_amnt)
+# my_data <- subset(my_data, select = -funded_amnt) I think this is more important than initially believed
 
 # convert character to floats
 my_data$int_rate <- as.double(my_data$int_rate)
