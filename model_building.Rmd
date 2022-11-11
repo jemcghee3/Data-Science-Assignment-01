@@ -17,7 +17,7 @@ library(fastDummies) # to make dummy variables
 library(corrplot) # for visualization but probably not needed in final.
 library(boot) # load library boot to use cv.glm
 library(glmnet) # for ridge regression and lasso regression
-library(caret) # another group said this was very helpful for getting pretty data that got them an MSE of 8
+library(caret) # another group said this was very helpful for getting pretty data that got them an MSE of 8 with LASSO, but I still get 13
 
 raw_data <- read.csv2("./LCdata.csv", header = TRUE, row.names=NULL, sep=";")
 
@@ -57,7 +57,7 @@ my_data$funded_amnt_inv <- as.integer(my_data$funded_amnt_inv)
 
 # convert character to ordered integers
 # Note: should this be categorical? or group them?
-my_data$emp_length <- as.integer(ordered(my_data$emp_length, levels = c("n/a", "< 1 year", "1 year", "2 years", "3 years", "4 years", "5 years", "6 years", "7 years", "8 years", "9 years", "10+ years"))) # does this need to consider na as unemployed?
+my_data$emp_length <- as.integer(ordered(my_data$emp_length, levels = c("n/a", "< 1 year", "1 year", "2 years", "3 years", "4 years", "5 years", "6 years", "7 years", "8 years", "9 years", "10+ years"))) - 1 # does this need to consider na as unemployed?
 
 # drop NA
 my_data <- my_data %>%  # note this drops 40,000 records
@@ -68,6 +68,12 @@ my_data <- filter(my_data, ! is.na(my_data$delinq_2yrs))
 my_data <- filter(my_data, ! is.na(my_data$revol_bal))
 my_data <- filter(my_data, ! is.na(my_data$revol_util))
 my_data <- filter(my_data, ! is.na(my_data$collections_12_mths_ex_med))
+
+# fix verification_status and verification_status_joint
+levels(factor(my_data$verification_status))
+my_data$verification_status <- ifelse(my_data$verification_status == "Source Verified", "Source", my_data$verification_status)
+my_data$verification_status <- ifelse(my_data$verification_status == "Not Verified", "Not", my_data$verification_status)
+levels(factor(my_data$verification_status))
 
 #dummy columns
 my_data <- dummy_columns(my_data, select_columns = "home_ownership", remove_first_dummy = TRUE, remove_selected_columns = TRUE)
@@ -145,10 +151,10 @@ glm18 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + veri
 glm19 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc, data = data.train)
 glm20 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq, data = data.train)
 glm21 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business, data = data.train)
-glm22 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other, data = data.train)
-glm23 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving, data = data.train)
-glm24 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house, data = data.train)
-glm25 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house + purpose_medical, data = data.train)
+glm22 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other, data = data.train)
+glm23 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving, data = data.train)
+glm24 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house, data = data.train)
+glm25 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house + purpose_medical, data = data.train)
 ```
 # Cross-validation for parameter selection
 
@@ -530,3 +536,295 @@ abline (0,1)
 
 ```
 This did not improve the situation. MSE went down to 12.39, which is exactly the same as in the glm model.
+
+
+# Caret library
+
+```{r}
+set.seed(1)
+trainData.caret <- sample(1:nrow(model_data), 0.7*nrow(model_data))
+data.caret.train <- model_data[trainData.caret,]
+data.caret.test <- model_data[-trainData.caret,]
+```
+
+
+## Data Pre-processing
+
+```{r}
+caret_data <- model_data
+```
+
+### Impute Data
+```{r}
+
+```
+
+
+### Remove zero- and near-zero-variance predictors
+```{r}
+nzv <- nearZeroVar(caret_data)
+caret_data <- caret_data[,-nzv]
+```
+
+### Remove correlated predictors
+
+This code does not work
+Error in if (x[i, j] > cutoff) { : missing value where TRUE/FALSE needed
+```{r}
+data_cor <- cor(caret_data)
+data_highlyCor <- findCorrelation(data_cor, cutoff = .75)
+caret_data <- caret_data[,-data_highlyCor]
+```
+
+### Remove linear dependencies
+
+```{r}
+comboInfo <- findLinearCombos(caret_data)
+caret_data[,comboInfo$remove]
+```
+
+### Impute
+
+## knn - Not working
+
+
+```{r}
+preprocPar.knn <- preProcess(data.caret.train, method = c("scale", "center", "knnImpute", "nzv"))
+
+train_transformed.knn <- predict(preprocPar, data.caret.train)
+test_transformed.knn <- predict(preprocPar, data.caret.test)
+```
+## Ridge Regression
+
+```{r}
+caret.predictors <- model.matrix(int_rate ~ ., train_transformed.knn)[,-1] #remove the first column, which is the intercept. glmnet doesn't need that
+head(caret.predictors)
+outputs <- data.caret.train$int_rate # creating a vector to hold the response variable
+# here, I keep int_rate untransformed, but maybe revisit
+
+```
+
+```{r}
+m_ridge.caret <- glmnet(caret.predictors, outputs, alpha = 0)
+dim(coef(m_ridge.caret))
+m_ridge.caret
+plot(m_ridge.caret, label=TRUE)
+```
+### cross-validation to select the best lambda
+```{r}
+(cv_ridge.caret <- cv.glmnet(caret.predictors, outputs, alpha = 0) )
+
+```
+Measure: Mean-Squared Error 
+
+    Lambda Index Measure      SE Nonzero
+min 0.1167   100   13.15 0.04104      40
+1se 0.3565    88   13.19 0.04016      40
+
+```{r}
+plot(cv_ridge.caret)
+(best_lambda.caret <- cv_ridge.caret$lambda.min)
+coef(m_ridge.caret, s=best_lambda.caret)
+
+```
+
+### Training the model on ridge regression
+```{r}
+predictors.Train <- model.matrix(int_rate ~ ., train_transformed.knn)[,-1] # prepare format for glmnet
+outputs.Train <- data.caret.train$int_rate  # prepare format for glmnet
+m_ridge.Train <- glmnet(predictors.Train, outputs.Train, alpha = 0) # do the fit
+
+```
+
+
+### Test the ridge regression
+
+We can use the predict() function to make predictions with ridge regression
+```{r}
+predictors.Test <- model.matrix(int_rate ~ ., test_transformed.knn)[,-1] # prepare format for glmnet
+ridge.pred <- predict(m_ridge.Train, newx = predictors.Test, s = best_lambda.caret) # s specifies the lambda to use
+# Compute MSE just for fun - maybe to compare later with other models
+(MSE_ridge <- mean((data.caret.test$int_rate-ridge.pred)^2)) 
+          
+```
+This is not a significantly different MSE from the glm.25 or glm.fit.best model.
+
+
+
+```{r}
+plot(ridge.pred,data.caret.test$int_rate)
+abline (0,1)
+```
+
+This has the same issue that it needs to increase the slope. It overpredicts on the bottom end and underpredicts on the top end.
+
+## LASSO
+
+```{r}
+m_LASSO <- glmnet(caret.predictors, outputs, alpha = 1)
+dim(coef(m_LASSO))
+```
+
+
+```{r}
+m_LASSO # we see that some of the coefficients are set to 0
+plot(m_LASSO, label = TRUE)
+(cv_LASSO <- cv.glmnet(caret.predictors, outputs, alpha = 1))
+plot(cv_LASSO)
+(best_lambda_LASSO <- cv_LASSO$lambda.min) #best lambda is very small, but lambda 1se is considerably larger
+coef(m_LASSO, s = best_lambda_LASSO) # for small lambda almost all coefficients are included
+coef(m_LASSO, s = cv_LASSO$lambda.1se) # We can try again with lambda.1se
+coef(m_ridge.caret, s = best_lambda) # we can compare with ridge regression
+
+```
+
+### Training the LASSO model
+```{r}
+predictors.LASSO.Train <- model.matrix(int_rate ~ ., train_transformed.knn)[,-1] # prepare format for glmnet
+outputs.LASSO.Train <- data.caret.train$int_rate  # prepare format for glmnet
+m_ridge.LASSO.Train <- glmnet(predictors.LASSO.Train, outputs.LASSO.Train, alpha = 1) # do the fit
+
+```
+
+### Test the LASSO regression
+
+We can use the predict() function to make predictions with LASSO regression
+```{r}
+predictors.LASSO.Test <- model.matrix(int_rate ~ ., test_transformed.knn)[,-1] # prepare format for glmnet
+LASSO.pred <- predict(m_ridge.LASSO.Train, newx = predictors.LASSO.Test, s = best_lambda_LASSO) # s specifies the lambda to use
+# Compute MSE just for fun - maybe to compare later with other models
+(MSE_LASSO <- mean((data.caret.test$int_rate-LASSO.pred)^2)) 
+          
+```
+This is not a significantly different MSE from the glm.25 or glm.fit.best model, or the ridge regression.
+
+
+
+```{r}
+plot(LASSO.pred,int_rate.test)
+abline (0,1)
+```
+
+The exact same problem appears, where it over predicts the interest rate on the low end and under predicts it on the high end.
+
+## bagged trees
+
+```{r}
+preprocPar.bagged <- preProcess(data.caret.train, method = c("scale", "center", "bagImpute", "nzv"))
+
+train_transformed.bagged <- predict(preprocPar.bagged, data.caret.train)
+test_transformed.bagged <- predict(preprocPar.bagged, data.caret.test)
+```
+
+## Ridge Regression
+
+```{r}
+caret.predictors <- model.matrix(int_rate ~ ., train_transformed.bagged)[,-1] #remove the first column, which is the intercept. glmnet doesn't need that
+head(caret.predictors)
+outputs <- data.caret.train$int_rate # creating a vector to hold the response variable
+# here, I keep int_rate untransformed, but maybe revisit
+
+```
+
+```{r}
+m_ridge.caret <- glmnet(caret.predictors, outputs, alpha = 0)
+dim(coef(m_ridge.caret))
+m_ridge.caret
+plot(m_ridge.caret, label=TRUE)
+```
+### cross-validation to select the best lambda
+```{r}
+(cv_ridge.caret <- cv.glmnet(caret.predictors, outputs, alpha = 0) )
+
+```
+Measure: Mean-Squared Error 
+
+    Lambda Index Measure      SE Nonzero
+min 0.1167   100   13.15 0.04104      40
+1se 0.3565    88   13.19 0.04016      40
+
+```{r}
+plot(cv_ridge.caret)
+(best_lambda.caret <- cv_ridge.caret$lambda.min)
+coef(m_ridge.caret, s=best_lambda.caret)
+
+```
+
+### Training the model on ridge regression
+```{r}
+predictors.Train <- model.matrix(int_rate ~ ., train_transformed.bagged)[,-1] # prepare format for glmnet
+outputs.Train <- data.caret.train$int_rate  # prepare format for glmnet
+m_ridge.Train <- glmnet(predictors.Train, outputs.Train, alpha = 0) # do the fit
+
+```
+
+
+### Test the ridge regression
+
+We can use the predict() function to make predictions with ridge regression
+```{r}
+predictors.Test <- model.matrix(int_rate ~ ., test_transformed.bagged)[,-1] # prepare format for glmnet
+ridge.pred <- predict(m_ridge.Train, newx = predictors.Test, s = best_lambda.caret) # s specifies the lambda to use
+# Compute MSE just for fun - maybe to compare later with other models
+(MSE_ridge <- mean((data.caret.test$int_rate-ridge.pred)^2)) 
+          
+```
+This is not a significantly different MSE from the glm.25 or glm.fit.best model.
+
+
+
+```{r}
+plot(ridge.pred,data.caret.test$int_rate)
+abline (0,1)
+```
+
+This has the same issue that it needs to increase the slope. It overpredicts on the bottom end and underpredicts on the top end.
+
+## LASSO
+
+```{r}
+m_LASSO <- glmnet(caret.predictors, outputs, alpha = 1)
+dim(coef(m_LASSO))
+```
+
+
+```{r}
+m_LASSO # we see that some of the coefficients are set to 0
+plot(m_LASSO, label = TRUE)
+(cv_LASSO <- cv.glmnet(caret.predictors, outputs, alpha = 1))
+plot(cv_LASSO)
+(best_lambda_LASSO <- cv_LASSO$lambda.min) #best lambda is very small, but lambda 1se is considerably larger
+coef(m_LASSO, s = best_lambda_LASSO) # for small lambda almost all coefficients are included
+coef(m_LASSO, s = cv_LASSO$lambda.1se) # We can try again with lambda.1se
+coef(m_ridge.caret, s = best_lambda) # we can compare with ridge regression
+
+```
+
+### Training the LASSO model
+```{r}
+predictors.LASSO.Train <- model.matrix(int_rate ~ ., train_transformed.bagged)[,-1] # prepare format for glmnet
+outputs.LASSO.Train <- data.caret.train$int_rate  # prepare format for glmnet
+m_ridge.LASSO.Train <- glmnet(predictors.LASSO.Train, outputs.LASSO.Train, alpha = 1) # do the fit
+
+```
+
+### Test the LASSO regression
+
+We can use the predict() function to make predictions with LASSO regression
+```{r}
+predictors.LASSO.Test <- model.matrix(int_rate ~ ., test_transformed.bagged)[,-1] # prepare format for glmnet
+LASSO.pred <- predict(m_ridge.LASSO.Train, newx = predictors.LASSO.Test, s = best_lambda_LASSO) # s specifies the lambda to use
+# Compute MSE just for fun - maybe to compare later with other models
+(MSE_LASSO <- mean((data.caret.test$int_rate-LASSO.pred)^2)) 
+          
+```
+This is not a significantly different MSE from the glm.25 or glm.fit.best model, or the ridge regression.
+
+
+
+```{r}
+plot(LASSO.pred,data.caret.test$int_rate)
+abline (0,1)
+```
+
+The exact same problem appears, where it over predicts the interest rate on the low end and under predicts it on the high end.
