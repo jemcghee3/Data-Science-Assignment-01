@@ -650,11 +650,12 @@ The number of inquiries in past 6 months (excluding auto and mortgage inquiries)
 
 This represents how many times a lender has pulled the borrower's credit report. In itself it does not mean anything, but a higher value is taken as an indication that the borrower is not creditworthy (else, why ask for so much debt?) 0-2 is fine.
 
-There are no NA values
+There are 25 NA values
 
 ```{r}
 head(my_data$inq_last_6mths)
-count(my_data, is.na(inq_last_6mths))
+count(raw_data, is.na(inq_last_6mths))
+count(my_data, inq_last_6mths < 0)
 ```
 Plot the range
 ```{r}
@@ -668,6 +669,33 @@ lm.1 <- lm(int_rate~inq_last_6mths, my_data)
 summary(lm.1)
 ```
 This has a significant impact on interest rate.
+
+### inq_last_12m
+
+The number of inquiries in past 12 months (excluding auto and mortgage inquiries)
+
+This represents how many times a lender has pulled the borrower's credit report. In itself it does not mean anything, but a higher value is taken as an indication that the borrower is not creditworthy (else, why ask for so much debt?) 0-2 is fine.
+
+There are many values
+
+```{r}
+head(my_data$inq_last_12m)
+count(my_data, is.na(inq_last_12m))
+count(my_data, inq_last_12m < 0)
+```
+Plot the range
+```{r}
+ggplot(data = my_data, aes(x = inq_last_12m)) +
+  geom_histogram(binwidth = 1)
+```
+Power law distribution.
+
+```{r}
+lm.1 <- lm(int_rate~inq_last_12m, my_data)
+summary(lm.1)
+```
+This has a significant impact on interest rate.
+
 
 ### mths_since_last_delinq
 

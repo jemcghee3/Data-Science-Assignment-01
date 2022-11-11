@@ -24,21 +24,12 @@ raw_data <- read.csv2("./LCdata.csv", header = TRUE, row.names=NULL, sep=";")
 my_data <- raw_data
 
 # drop columns per Gwen
-my_data <- select(my_data, -c("collection_recovery_fee", "installment", "issue_d", "last_pymnt_amnt", "last_pymnt_d", "next_pymnt_d", "recoveries", "term", "total_pymnt_inv", "total_rec_int", "total_rec_late_fee", "total_rec_prncp", "id", "member_id")) 
+my_data <- select(my_data, -c("collection_recovery_fee", "installment", "issue_d", "last_pymnt_amnt", "last_pymnt_d", "loan_status", "next_pymnt_d", "out_prncp", "out_prncp_inv", "pymnt_plan", "recoveries", "term", "total_pymnt", "total_pymnt_inv", "total_rec_int", "total_rec_late_fee", "total_rec_prncp")) 
+
 # drop columns that are not useful
-my_data <- subset(my_data, select = -emp_title)
-my_data <- subset(my_data, select = -loan_status)
-my_data <- subset(my_data, select = -pymnt_plan)
-my_data <- subset(my_data, select = -url)
-my_data <- subset(my_data, select = -desc)
-my_data <- subset(my_data, select = -title)
-my_data <- subset(my_data, select = -zip_code)
-my_data <- subset(my_data, select = -addr_state)
-my_data <- subset(my_data, select = -earliest_cr_line)
-my_data <- subset(my_data, select = -out_prncp)
-my_data <- subset(my_data, select = -out_prncp_inv)
-my_data <- subset(my_data, select = -last_credit_pull_d)
-my_data <- subset(my_data, select = -policy_code)
+
+my_data <- select(my_data, -c("id", "member_id", "emp_title", "url", "desc", "title", "zip_code", "addr_state", "earliest_cr_line", "last_credit_pull_d", "policy_code"))
+
 # my_data <- subset(my_data, select = -funded_amnt) I think this is more important than initially believed, but when I checked the data I found it did not make a difference. Leaving in anyway.
 
 # convert character to floats
@@ -48,7 +39,6 @@ my_data$dti_joint <- as.double(my_data$dti_joint)
 my_data$il_util <- as.double(my_data$il_util)
 my_data$all_util <- as.double(my_data$all_util)
 my_data$revol_util <- as.double(my_data$revol_util)
-my_data$total_pymnt <- as.double(my_data$total_pymnt) # drop?
 
 # convert character to integer
 my_data$annual_inc <- as.integer(my_data$annual_inc)
@@ -60,8 +50,8 @@ my_data$funded_amnt_inv <- as.integer(my_data$funded_amnt_inv)
 my_data$emp_length <- as.integer(ordered(my_data$emp_length, levels = c("n/a", "< 1 year", "1 year", "2 years", "3 years", "4 years", "5 years", "6 years", "7 years", "8 years", "9 years", "10+ years"))) - 1 # does this need to consider na as unemployed?
 
 # drop NA
-my_data <- my_data %>%  # note this drops 40,000 records
-  drop_na(emp_length)
+# my_data <- my_data %>%  # note this drops 40,000 records
+#  drop_na(emp_length) # this no longer does anything since n/a replaced above.
 my_data <- filter(my_data, ! is.na(my_data$home_ownership))
 my_data <- filter(my_data, ! is.na(my_data$annual_inc))
 my_data <- filter(my_data, ! is.na(my_data$delinq_2yrs))
@@ -70,10 +60,8 @@ my_data <- filter(my_data, ! is.na(my_data$revol_util))
 my_data <- filter(my_data, ! is.na(my_data$collections_12_mths_ex_med))
 
 # fix verification_status and verification_status_joint
-levels(factor(my_data$verification_status))
 my_data$verification_status <- ifelse(my_data$verification_status == "Source Verified", "Source", my_data$verification_status)
 my_data$verification_status <- ifelse(my_data$verification_status == "Not Verified", "Not", my_data$verification_status)
-levels(factor(my_data$verification_status))
 
 #dummy columns
 my_data <- dummy_columns(my_data, select_columns = "home_ownership", remove_first_dummy = TRUE, remove_selected_columns = TRUE)
@@ -85,6 +73,26 @@ my_data <- dummy_columns(my_data, select_columns = "initial_list_status", remove
 
 # remove outliers
 my_data$annual_inc <- ifelse(my_data$annual_inc >= 1000000, my_data$annual_inc / 100, my_data$annual_inc)
+
+# Correct data errors
+my_data$inq_last_12m <- ifelse(my_data$inq_last_12m < 0, my_data$inq_last_12m * -1, my_data$inq_last_12m) # eliminate negatives
+
+# deal with joint income and joint dti
+debt_payment.ind <- my_data$dti * my_data$annual_inc
+debt_payment.joint <- my_data$dti_joint * my_data$annual_inc_joint
+debt_payment.applicant <- ifelse(my_data$application_type_JOINT == 1, debt_payment.ind + debt_payment.joint, debt_payment.ind)
+
+annual_inc.applicant <- ifelse(my_data$application_type_JOINT == 1, my_data$annual_inc + my_data$annual_inc_joint, my_data$annual_inc)
+
+dti.applicant <- debt_payment.applicant / annual_inc.applicant
+
+my_data$annual_inc <- annual_inc.applicant
+
+my_data$dti <- ifelse(is.na(dti.applicant), my_data$dti, dti.applicant)
+
+# drop joint data now that is not used
+my_data <- select(my_data, -c("annual_inc_joint", "dti_joint"))
+
 
 model_data <- my_data #make test modeling data
 ```
@@ -100,6 +108,173 @@ column 24 is causing problems, not sure why as it seems as though it should work
 colSums(is.na(model_data))
 ```
 
+# Create a dataset where we have credit report information
+```{r}
+cr_data <- filter(my_data, ! is.na(inq_last_12m))
+colSums(is.na(cr_data))
+# if total_bal_il is 0, make il_util 0 as well
+cr_data$il_util <- ifelse(cr_data$total_bal_il == 0, 0, cr_data$il_util)
+colSums(is.na(cr_data))
+```
+
+## deal with people who are not delinquent
+```{r}
+
+ggplot(data = cr_data) +
+  geom_boxplot(mapping = aes(x = is.na(mths_since_last_delinq), y = int_rate))
+
+
+```
+People who are NA are lower, as we expect
+
+This is to see if we can find a similar time period. But no, not really
+```{r}
+df <- cr_data
+f <- as.character(df$mths_since_last_delinq)
+f <- ifelse(is.na(f), "n/a", f)
+head(f)
+df$mths_since_last_delinq <- f
+
+ggplot(data = df) +
+  geom_boxplot(mapping = aes(x = mths_since_last_delinq, y = int_rate))
+
+ggplot(data = df) +
+  geom_bar(aes(x = mths_since_last_delinq))
+```
+
+
+Make it categorical. People who have defaulted previously, and those who have not.
+```{r}
+
+cr_data$mths_since_last_delinq <- ifelse(is.na(cr_data$mths_since_last_delinq), 0, 1)
+
+```
+
+Do the same for other parameters. 
+
+### mths_since_last_record
+```{r}
+
+ggplot(data = cr_data) +
+  geom_boxplot(mapping = aes(x = is.na(mths_since_last_record), y = int_rate))
+
+```
+People who are NA are lower, as we expect
+
+This is to see if we can find a similar time period. But no, not really
+```{r}
+df <- cr_data
+f <- as.character(df$mths_since_last_record)
+f <- ifelse(is.na(f), "n/a", f)
+head(f)
+df$mths_since_last_record <- f
+
+ggplot(data = df) +
+  geom_boxplot(mapping = aes(x = mths_since_last_record, y = int_rate))
+
+ggplot(data = df) +
+  geom_bar(aes(x = mths_since_last_delinq))
+```
+Make it categorical. People who have defaulted previously, and those who have not. In this case, however, it may make more sense to set n/a people to a high number, since the biggest effect is seen 1/3 of the way through the graph.
+```{r}
+levels(factor(cr_data$mths_since_last_record))
+```
+
+Set it to be one higher than the current highest
+```{r}
+
+cr_data$mths_since_last_record <- ifelse(is.na(cr_data$mths_since_last_record), 121, cr_data$mths_since_last_record)
+
+```
+
+### mths_since_last_major_derog 
+```{r}
+
+ggplot(data = cr_data) +
+  geom_boxplot(mapping = aes(x = is.na(mths_since_last_major_derog), y = int_rate))
+
+```
+People who are NA are lower, as we expect, but the median is about the same.
+
+This is to see if we can find a similar time period. But no, not really
+```{r}
+df <- cr_data
+f <- as.character(df$mths_since_last_major_derog)
+f <- ifelse(is.na(f), "n/a", f)
+head(f)
+df$mths_since_last_major_derog <- f
+
+ggplot(data = df) +
+  geom_boxplot(mapping = aes(x = mths_since_last_major_derog, y = int_rate))
+
+ggplot(data = df) +
+  geom_bar(aes(x = mths_since_last_major_derog))
+```
+Make it categorical because there does not seem to be a clear trend, perhaps due to lack of data.
+
+Set it to be one higher than the current highest
+```{r}
+
+cr_data$mths_since_last_major_derog <- ifelse(is.na(cr_data$mths_since_last_major_derog), 0, 1)
+
+```
+
+
+### il_util
+```{r}
+filter(cr_data, is.na(il_util))
+```
+```{r}
+ggplot(data = cr_data) +
+  geom_boxplot(mapping = aes(x = is.na(il_util), y = int_rate))
+
+ggplot(data = cr_data) +
+  geom_point(aes(x = il_util, y = int_rate))
+
+
+
+```
+
+If it is NA, set it == 0
+```{r}
+cr_data$il_util <- ifelse(is.na(cr_data$il_util), 0, cr_data$il_util)
+
+```
+
+
+### mths_since_rcnt_il
+
+```{r}
+ggplot(data = cr_data) +
+  geom_boxplot(mapping = aes(x = is.na(mths_since_rcnt_il), y = int_rate))
+
+ggplot(data = cr_data) +
+  geom_point(aes(x = mths_since_rcnt_il, y = int_rate))
+```
+There is a good correlation here, between the parameter and int_rate, and not much between na and not na. I am not sure what to do. It would be too many observations to drop. Maybe the mean, or let caret fill it.
+
+## make training and test set
+```{r}
+set.seed(1)
+cr_trainData <- sample(1:nrow(cr_data), 0.7*nrow(cr_data))
+cr_data.train <- cr_data[cr_trainData,]
+cr_data.test <- cr_data[-cr_trainData,]
+
+```
+
+Make it ready for caret
+```{r}
+data.caret.train <- cr_data.train
+
+data.caret.test <- cr_data.test 
+```
+caret ridge regression MSE = [1] 10.08767
+caret LASSo MSE = [1] 10.06132
+This is better than the overall dataset, which is around 13.
+
+
+# Build a Linear Model
+
 Create list of the NA columns
 These are not used for now, but further data processing may make them useful.
 ```{r}
@@ -110,7 +285,6 @@ force_out <- c("mths_since_last_delinq", "mths_since_last_record", "mths_since_l
 model_data_no_na <- select(model_data, -force_out)
 colSums(is.na(model_data_no_na))
 ```
-# Build a Linear Model
 
 ```{r}
 set.seed(1)
@@ -594,118 +768,7 @@ preprocPar.knn <- preProcess(data.caret.train, method = c("scale", "center", "kn
 train_transformed.knn <- predict(preprocPar, data.caret.train)
 test_transformed.knn <- predict(preprocPar, data.caret.test)
 ```
-## Ridge Regression
 
-```{r}
-caret.predictors <- model.matrix(int_rate ~ ., train_transformed.knn)[,-1] #remove the first column, which is the intercept. glmnet doesn't need that
-head(caret.predictors)
-outputs <- data.caret.train$int_rate # creating a vector to hold the response variable
-# here, I keep int_rate untransformed, but maybe revisit
-
-```
-
-```{r}
-m_ridge.caret <- glmnet(caret.predictors, outputs, alpha = 0)
-dim(coef(m_ridge.caret))
-m_ridge.caret
-plot(m_ridge.caret, label=TRUE)
-```
-### cross-validation to select the best lambda
-```{r}
-(cv_ridge.caret <- cv.glmnet(caret.predictors, outputs, alpha = 0) )
-
-```
-Measure: Mean-Squared Error 
-
-    Lambda Index Measure      SE Nonzero
-min 0.1167   100   13.15 0.04104      40
-1se 0.3565    88   13.19 0.04016      40
-
-```{r}
-plot(cv_ridge.caret)
-(best_lambda.caret <- cv_ridge.caret$lambda.min)
-coef(m_ridge.caret, s=best_lambda.caret)
-
-```
-
-### Training the model on ridge regression
-```{r}
-predictors.Train <- model.matrix(int_rate ~ ., train_transformed.knn)[,-1] # prepare format for glmnet
-outputs.Train <- data.caret.train$int_rate  # prepare format for glmnet
-m_ridge.Train <- glmnet(predictors.Train, outputs.Train, alpha = 0) # do the fit
-
-```
-
-
-### Test the ridge regression
-
-We can use the predict() function to make predictions with ridge regression
-```{r}
-predictors.Test <- model.matrix(int_rate ~ ., test_transformed.knn)[,-1] # prepare format for glmnet
-ridge.pred <- predict(m_ridge.Train, newx = predictors.Test, s = best_lambda.caret) # s specifies the lambda to use
-# Compute MSE just for fun - maybe to compare later with other models
-(MSE_ridge <- mean((data.caret.test$int_rate-ridge.pred)^2)) 
-          
-```
-This is not a significantly different MSE from the glm.25 or glm.fit.best model.
-
-
-
-```{r}
-plot(ridge.pred,data.caret.test$int_rate)
-abline (0,1)
-```
-
-This has the same issue that it needs to increase the slope. It overpredicts on the bottom end and underpredicts on the top end.
-
-## LASSO
-
-```{r}
-m_LASSO <- glmnet(caret.predictors, outputs, alpha = 1)
-dim(coef(m_LASSO))
-```
-
-
-```{r}
-m_LASSO # we see that some of the coefficients are set to 0
-plot(m_LASSO, label = TRUE)
-(cv_LASSO <- cv.glmnet(caret.predictors, outputs, alpha = 1))
-plot(cv_LASSO)
-(best_lambda_LASSO <- cv_LASSO$lambda.min) #best lambda is very small, but lambda 1se is considerably larger
-coef(m_LASSO, s = best_lambda_LASSO) # for small lambda almost all coefficients are included
-coef(m_LASSO, s = cv_LASSO$lambda.1se) # We can try again with lambda.1se
-coef(m_ridge.caret, s = best_lambda) # we can compare with ridge regression
-
-```
-
-### Training the LASSO model
-```{r}
-predictors.LASSO.Train <- model.matrix(int_rate ~ ., train_transformed.knn)[,-1] # prepare format for glmnet
-outputs.LASSO.Train <- data.caret.train$int_rate  # prepare format for glmnet
-m_ridge.LASSO.Train <- glmnet(predictors.LASSO.Train, outputs.LASSO.Train, alpha = 1) # do the fit
-
-```
-
-### Test the LASSO regression
-
-We can use the predict() function to make predictions with LASSO regression
-```{r}
-predictors.LASSO.Test <- model.matrix(int_rate ~ ., test_transformed.knn)[,-1] # prepare format for glmnet
-LASSO.pred <- predict(m_ridge.LASSO.Train, newx = predictors.LASSO.Test, s = best_lambda_LASSO) # s specifies the lambda to use
-# Compute MSE just for fun - maybe to compare later with other models
-(MSE_LASSO <- mean((data.caret.test$int_rate-LASSO.pred)^2)) 
-          
-```
-This is not a significantly different MSE from the glm.25 or glm.fit.best model, or the ridge regression.
-
-
-
-```{r}
-plot(LASSO.pred,int_rate.test)
-abline (0,1)
-```
-
-The exact same problem appears, where it over predicts the interest rate on the low end and under predicts it on the high end.
 
 ## bagged trees
 
@@ -796,7 +859,7 @@ plot(cv_LASSO)
 (best_lambda_LASSO <- cv_LASSO$lambda.min) #best lambda is very small, but lambda 1se is considerably larger
 coef(m_LASSO, s = best_lambda_LASSO) # for small lambda almost all coefficients are included
 coef(m_LASSO, s = cv_LASSO$lambda.1se) # We can try again with lambda.1se
-coef(m_ridge.caret, s = best_lambda) # we can compare with ridge regression
+coef(m_ridge.caret, s = best_lambda.caret) # we can compare with ridge regression
 
 ```
 
@@ -818,7 +881,7 @@ LASSO.pred <- predict(m_ridge.LASSO.Train, newx = predictors.LASSO.Test, s = bes
 (MSE_LASSO <- mean((data.caret.test$int_rate-LASSO.pred)^2)) 
           
 ```
-This is not a significantly different MSE from the glm.25 or glm.fit.best model, or the ridge regression.
+This is not a significantly different MSE from the ridge regression.
 
 
 
