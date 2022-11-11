@@ -155,6 +155,9 @@ See where funded_amnt_inv greater than, less than, equal to loan_amt
 ```{r}
 ggplot(data = my_data) +
   geom_point(aes(x = loan_amnt, y = funded_amnt_inv), alpha = 0.05)
+
+ggplot(data = my_data) +
+  geom_point(aes(x = funded_amnt_inv, y = funded_amnt), alpha = 0.05)
 ```
 This shows two different curves, indicating two different types of bowers receiving investor funding. What is the difference between the two types of borrowers?
 

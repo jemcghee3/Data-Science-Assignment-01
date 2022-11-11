@@ -17,6 +17,7 @@ library(fastDummies) # to make dummy variables
 library(corrplot) # for visualization but probably not needed in final.
 library(boot) # load library boot to use cv.glm
 library(glmnet) # for ridge regression and lasso regression
+library(caret) # another group said this was very helpful for getting pretty data that got them an MSE of 8
 
 raw_data <- read.csv2("./LCdata.csv", header = TRUE, row.names=NULL, sep=";")
 
@@ -38,7 +39,7 @@ my_data <- subset(my_data, select = -out_prncp)
 my_data <- subset(my_data, select = -out_prncp_inv)
 my_data <- subset(my_data, select = -last_credit_pull_d)
 my_data <- subset(my_data, select = -policy_code)
-# my_data <- subset(my_data, select = -funded_amnt) I think this is more important than initially believed
+# my_data <- subset(my_data, select = -funded_amnt) I think this is more important than initially believed, but when I checked the data I found it did not make a difference. Leaving in anyway.
 
 # convert character to floats
 my_data$int_rate <- as.double(my_data$int_rate)
@@ -55,8 +56,8 @@ my_data$annual_inc_joint <- as.integer(my_data$annual_inc_joint)
 my_data$funded_amnt_inv <- as.integer(my_data$funded_amnt_inv)
 
 # convert character to ordered integers
-# Note: should this be categorical?
-my_data$emp_length <- as.integer(ordered(my_data$emp_length, levels = c("< 1 year", "1 year", "2 years", "3 years", "4 years", "5 years", "6 years", "7 years", "8 years", "9 years", "10+ years"))) - 1
+# Note: should this be categorical? or group them?
+my_data$emp_length <- as.integer(ordered(my_data$emp_length, levels = c("n/a", "< 1 year", "1 year", "2 years", "3 years", "4 years", "5 years", "6 years", "7 years", "8 years", "9 years", "10+ years"))) # does this need to consider na as unemployed?
 
 # drop NA
 my_data <- my_data %>%  # note this drops 40,000 records
