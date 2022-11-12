@@ -62,6 +62,8 @@ my_data <- filter(my_data, ! is.na(my_data$collections_12_mths_ex_med))
 # fix verification_status and verification_status_joint
 my_data$verification_status <- ifelse(my_data$verification_status == "Source Verified", "Source", my_data$verification_status)
 my_data$verification_status <- ifelse(my_data$verification_status == "Not Verified", "Not", my_data$verification_status)
+my_data$verification_status_joint <- ifelse(my_data$verification_status == "Source Verified", "Source", my_data$verification_status)
+my_data$verification_status_joint <- ifelse(my_data$verification_status == "Not Verified", "Not", my_data$verification_status)
 
 #dummy columns
 my_data <- dummy_columns(my_data, select_columns = "home_ownership", remove_first_dummy = TRUE, remove_selected_columns = TRUE)
@@ -278,7 +280,7 @@ This is better than the overall dataset, which is around 13.
 Create list of the NA columns
 These are not used for now, but further data processing may make them useful.
 ```{r}
-force_out <- c("mths_since_last_delinq", "mths_since_last_record", "mths_since_last_major_derog", "annual_inc_joint", "dti_joint", "tot_coll_amt", "tot_cur_bal", "open_acc_6m", "open_il_6m", "open_il_12m", "open_il_24m", "mths_since_rcnt_il", "total_bal_il", "il_util", "open_rv_12m", "open_rv_24m", "max_bal_bc", "all_util", "total_rev_hi_lim", "inq_fi", "total_cu_tl", "inq_last_12m")
+force_out <- c("mths_since_last_delinq", "mths_since_last_record", "mths_since_last_major_derog", "tot_coll_amt", "tot_cur_bal", "open_acc_6m", "open_il_6m", "open_il_12m", "open_il_24m", "mths_since_rcnt_il", "total_bal_il", "il_util", "open_rv_12m", "open_rv_24m", "max_bal_bc", "all_util", "total_rev_hi_lim", "inq_fi", "total_cu_tl", "inq_last_12m")
 ```
 
 ```{r}
@@ -296,8 +298,122 @@ data.test <- model_data_no_na[-trainData,]
 
 1 linear dependency found. What parameters are co-linear?
 ```{r}
-sets_FWS <- regsubsets(int_rate ~ ., data.train, nvmax = 40, method = "forward")
+sets_FWS <- regsubsets(int_rate ~ ., data.train, nvmax = 39, method = "forward")
 summary(sets_FWS)
+
+```
+```{r}
+lm1 <- lm(int_rate ~ annual_inc, data = data.train)
+lm2 <- lm(int_rate ~ log(annual_inc), data = data.train) # much better than lm1
+lm3 <- lm(int_rate ~ sqrt(annual_inc), data = data.train)
+lm4 <- lm(int_rate ~ poly(annual_inc,10), data = data.train)
+lm5 <- lm(int_rate ~ poly(log(annual_inc), 7), data = data.train) # best
+summary(lm1)
+summary(lm2)
+summary(lm3)
+summary(lm4)
+summary(lm5)
+
+lm1 <- lm(int_rate ~ revol_util, data = data.train) # best
+lm2 <- lm(int_rate ~ log(revol_util), data = data.train) # can't take log
+lm3 <- lm(int_rate ~ sqrt(revol_util), data = data.train)
+lm4 <- lm(int_rate ~ poly(revol_util,10), data = data.train)
+lm5 <- lm(int_rate ~ poly(log(revol_util), 10), data = data.train) # can't take log
+summary(lm1)
+summary(lm2)
+summary(lm3)
+summary(lm4)
+summary(lm5)
+
+
+lm1 <- lm(int_rate ~ inq_last_6mths, data = data.train) # best
+lm2 <- lm(int_rate ~ log(inq_last_6mths), data = data.train) # can't take log
+lm3 <- lm(int_rate ~ sqrt(inq_last_6mths), data = data.train)
+lm4 <- lm(int_rate ~ poly(inq_last_6mths,4), data = data.train)
+lm5 <- lm(int_rate ~ poly(log(inq_last_6mths), 10), data = data.train) # can't take log
+summary(lm1) # not far behind
+summary(lm2)
+summary(lm3) # also good
+summary(lm4) # best
+summary(lm5)
+
+lm1 <- lm(int_rate ~ revol_bal, data = data.train) # best
+#lm2 <- lm(int_rate ~ log(revol_bal), data = data.train) # can't take log
+lm3 <- lm(int_rate ~ sqrt(revol_bal), data = data.train)
+lm4 <- lm(int_rate ~ poly(revol_bal,3), data = data.train)
+#lm5 <- lm(int_rate ~ poly(log(revol_bal), 3), data = data.train) # can't take log
+summary(lm1) 
+#summary(lm2)
+summary(lm3) 
+summary(lm4) # best
+#summary(lm5)
+
+lm1 <- lm(int_rate ~ dti, data = data.train) # best
+#lm2 <- lm(int_rate ~ log(dti), data = data.train) # can't take log
+lm3 <- lm(int_rate ~ sqrt(dti), data = data.train)
+lm4 <- lm(int_rate ~ poly(dti,3), data = data.train)
+#lm5 <- lm(int_rate ~ poly(log(dti), 3), data = data.train) # can't take log
+summary(lm1) 
+#summary(lm2)
+summary(lm3) 
+summary(lm4) # best
+#summary(lm5)
+
+lm1 <- lm(int_rate ~ pub_rec, data = data.train) # best
+#lm2 <- lm(int_rate ~ log(pub_rec), data = data.train) # can't take log
+lm3 <- lm(int_rate ~ sqrt(pub_rec), data = data.train)
+lm4 <- lm(int_rate ~ poly(pub_rec,3), data = data.train)
+#lm5 <- lm(int_rate ~ poly(log(pub_rec), 3), data = data.train) # can't take log
+summary(lm1) 
+#summary(lm2)
+summary(lm3) # best 
+summary(lm4)
+#summary(lm5)
+
+lm1 <- lm(int_rate ~ delinq_2yrs, data = data.train) # best
+#lm2 <- lm(int_rate ~ log(pub_rec), data = data.train) # can't take log
+lm3 <- lm(int_rate ~ sqrt(delinq_2yrs), data = data.train)
+lm4 <- lm(int_rate ~ poly(delinq_2yrs,2), data = data.train)
+#lm5 <- lm(int_rate ~ poly(log(pub_rec), 3), data = data.train) # can't take log
+summary(lm1) 
+#summary(lm2)
+summary(lm3) # best 
+summary(lm4)
+#summary(lm5)
+
+lm1 <- lm(int_rate ~ total_acc, data = data.train) # best
+#lm2 <- lm(int_rate ~ log(pub_rec), data = data.train) # can't take log
+lm3 <- lm(int_rate ~ sqrt(total_acc), data = data.train)
+lm4 <- lm(int_rate ~ poly(total_acc,2), data = data.train)
+lm5 <- lm(int_rate ~ poly(total_acc, 4), data = data.train) # can't take log
+summary(lm1) 
+#summary(lm2)
+summary(lm3) # good
+summary(lm4) # better
+summary(lm5) # best
+
+
+lm1 <- lm(int_rate ~ open_acc, data = data.train) # best
+#lm2 <- lm(int_rate ~ log(pub_rec), data = data.train) # can't take log
+lm3 <- lm(int_rate ~ sqrt(open_acc), data = data.train)
+lm4 <- lm(int_rate ~ poly(open_acc,2), data = data.train)
+lm5 <- lm(int_rate ~ poly(open_acc, 4), data = data.train) # can't take log
+summary(lm1) 
+#summary(lm2)
+summary(lm3) # good
+summary(lm4) # best
+summary(lm5)
+
+lm1 <- lm(int_rate ~ acc_now_delinq, data = data.train) # best
+#lm2 <- lm(int_rate ~ log(pub_rec), data = data.train) # can't take log
+lm3 <- lm(int_rate ~ sqrt(acc_now_delinq), data = data.train)
+lm4 <- lm(int_rate ~ poly(acc_now_delinq,2), data = data.train)
+lm5 <- lm(int_rate ~ poly(acc_now_delinq, 4), data = data.train) # can't take log
+summary(lm1) 
+#summary(lm2)
+summary(lm3) # good
+summary(lm4) # best
+summary(lm5)
 
 ```
 
@@ -311,24 +427,24 @@ glm4 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verif
 glm5 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc, data = data.train)
 glm6 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv, data = data.train)
 glm7 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation, data = data.train)
-glm8 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified`, data = data.train)
-glm9 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE, data = data.train)
-glm10 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w, data = data.train)
-glm11 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal, data = data.train)
-glm12 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti, data = data.train)
-glm13 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec, data = data.train)
-glm14 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs, data = data.train)
-glm15 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt, data = data.train)
-glm16 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement, data = data.train)
-glm17 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase, data = data.train)
-glm18 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc, data = data.train)
-glm19 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc, data = data.train)
-glm20 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq, data = data.train)
-glm21 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business, data = data.train)
-glm22 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other, data = data.train)
-glm23 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving, data = data.train)
-glm24 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house, data = data.train)
-glm25 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + pub_rec + delinq_2yrs + total_pymnt + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house + purpose_medical, data = data.train)
+glm8 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source, data = data.train)
+glm9 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE, data = data.train)
+glm10 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w, data = data.train)
+glm11 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal, data = data.train)
+glm12 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti, data = data.train)
+glm13 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + delinq_2yrs, data = data.train)
+glm14 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + delinq_2yrs + pub_rec, data = data.train)
+glm15 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + delinq_2yrs + pub_rec + purpose_home_improvement, data = data.train)
+glm16 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + delinq_2yrs + pub_rec + purpose_home_improvement + purpose_major_purchase, data = data.train)
+glm17 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + delinq_2yrs + pub_rec + purpose_home_improvement + purpose_major_purchase + total_acc, data = data.train)
+glm18 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + delinq_2yrs + pub_rec + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc, data = data.train)
+glm19 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + delinq_2yrs + pub_rec + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq, data = data.train)
+glm20 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + delinq_2yrs + pub_rec + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business, data = data.train)
+glm21 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + delinq_2yrs + pub_rec + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other, data = data.train)
+glm22 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + delinq_2yrs + pub_rec + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving, data = data.train)
+glm23 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + delinq_2yrs + pub_rec + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house, data = data.train)
+glm24 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + delinq_2yrs + pub_rec + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house + purpose_medical, data = data.train)
+glm25 <- glm(int_rate ~ revol_util + inq_last_6mths + purpose_credit_card + verification_status_Verified + annual_inc + funded_amnt_inv + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + initial_list_status_w + revol_bal + dti + delinq_2yrs + pub_rec + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_other + purpose_moving + purpose_house + purpose_medical + purpose_vacation, data = data.train)
 ```
 # Cross-validation for parameter selection
 
@@ -411,10 +527,11 @@ Note: This will take a long time to run. The idea is to run it for each paramete
 ```{r}
 cv.error.10=rep(0,10)
 for (i in 1:10){
-    glm.fit = glm(int_rate ~ revol_util + poly(inq_last_6mths,4) + purpose_credit_card + verification_status_Verified + poly(annual_inc,10) + poly(funded_amnt_inv,10) + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + poly(revol_bal,3) + dti + initial_list_status_w + poly(pub_rec,3) + poly(delinq_2yrs,2) + purpose_home_improvement + poly(total_pymnt,i) + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical, data = data.train)
+    glm.fit = glm(int_rate ~ revol_util + poly(inq_last_6mths,4) + purpose_credit_card + verification_status_Verified + poly(log(annual_inc), 7) + poly(funded_amnt_inv,4) + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + poly(revol_bal,3) + dti + initial_list_status_w + sqrt(pub_rec) + sqrt(delinq_2yrs) + purpose_home_improvement + purpose_major_purchase + poly(total_acc,4) + poly(open_acc,2) + poly(acc_now_delinq,2) + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical + purpose_vacation, data = data.train)
     cv.error.10[i] = cv.glm(data.train,glm.fit,K=5)$delta[1] # Setting K=5 means 5-fold CV
 }
 cv.error.10
+
 ```
 
 best poly, k = 10
@@ -442,9 +559,6 @@ pub_rec: 3 Or go with 1 becaus none of these are that different on the left side
 
 delinq_2yrs: 4 is the lowest, but not really different from 2
  [1]   14.16914   12.50662   12.50743   12.49501   12.57875   12.61406   12.50057   18.79284   19.55115 1092.33130
-
-total_pymnt: 8 is the minimum. But not really different from 1
- [1] 12.50376 12.50533 13.49381 12.47696 12.45606 12.45684 13.94445 12.45178 12.46844 12.47446
 
 total_acc:
 
@@ -527,7 +641,12 @@ par(mfrow=c(1,1))
 # Fit the parameters to the model
 
 ```{r}
-glm.fit.best = glm(int_rate ~ revol_util + poly(inq_last_6mths,4) + purpose_credit_card + verification_status_Verified + poly(annual_inc,7) + poly(funded_amnt_inv,10) + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + poly(revol_bal,3) + dti + initial_list_status_w + poly(pub_rec,3) + poly(delinq_2yrs,2) + purpose_home_improvement + poly(total_pymnt,8) + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical, data = data.train)
+glm.fit.best = glm(int_rate ~ revol_util + poly(inq_last_6mths,4) + purpose_credit_card + verification_status_Verified + poly(log(annual_inc), 7) + poly(funded_amnt_inv,4) + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + poly(revol_bal,3) + dti + initial_list_status_w + sqrt(pub_rec) + sqrt(delinq_2yrs) + purpose_home_improvement + purpose_major_purchase + poly(total_acc,4) + poly(open_acc,2) + poly(acc_now_delinq,2) + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical + purpose_vacation, data = data.train)
+summary(glm.fit.best)
+```
+square root model
+```{r}
+glm.fit.best = glm(int_rate ~ revol_util + sqrt(inq_last_6mths) + purpose_credit_card + verification_status_Verified + log(annual_inc) + sqrt(funded_amnt_inv) + purpose_debt_consolidation + verification_status_Source + home_ownership_MORTGAGE + sqrt(revol_bal) + dti + initial_list_status_w + sqrt(pub_rec) + sqrt(delinq_2yrs) + sqrt(total_acc) + sqrt(open_acc) + sqrt(acc_now_delinq) + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical + purpose_vacation, data = data.train) # home improvement and major purchase removed
 summary(glm.fit.best)
 ```
 
@@ -546,6 +665,8 @@ abline (0,1)
 (MSE_glm <- mean((data.test$int_rate-glm.fit.best.pred)^2)) 
 
 ```
+first poly model[1] 12.5818
+square root model: [1] 12.69812
 This is not great. We need to increase the slope. Also why are some interest rate predictions negative?
 
 
@@ -677,7 +798,7 @@ poly(revol_util,2) is slightly better than 1, but only just.
 Maybe standardizing the data will improve the fit. (it does not)
 ```{r}
 model_standard <- model_data_no_na %>% mutate_each_(list(~scale(.) %>% as.vector),
-                                  vars = c("revol_util", "inq_last_6mths", "annual_inc", "funded_amnt_inv", "revol_bal", "dti", "pub_rec", "delinq_2yrs", "total_pymnt", "total_acc", "open_acc", "acc_now_delinq", "loan_amnt")) #loan_amnt is added but not used
+                                  vars = c("revol_util", "inq_last_6mths", "annual_inc", "funded_amnt_inv", "revol_bal", "dti", "pub_rec", "delinq_2yrs", "total_acc", "open_acc", "acc_now_delinq", "loan_amnt")) #loan_amnt is added but not used
 ```
 
 ## Build test and training set
@@ -690,7 +811,7 @@ data.standard.test <- model_standard[-trainData,]
 ## Fit the parameters to the model
 
 ```{r}
-glm.standard.fit.best = glm(int_rate ~ revol_util + poly(inq_last_6mths,4) + purpose_credit_card + verification_status_Verified + poly(annual_inc,7) + poly(funded_amnt_inv,10) + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + poly(revol_bal,3) + dti + initial_list_status_w + poly(pub_rec,3) + poly(delinq_2yrs,2) + purpose_home_improvement + poly(total_pymnt,8) + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical, data = data.standard.train)
+glm.standard.fit.best = glm(int_rate ~ revol_util + poly(inq_last_6mths,4) + purpose_credit_card + verification_status_Verified + poly(annual_inc,7) + poly(funded_amnt_inv,10) + purpose_debt_consolidation + `verification_status_Source Verified` + home_ownership_MORTGAGE + poly(revol_bal,3) + dti + initial_list_status_w + poly(pub_rec,3) + poly(delinq_2yrs,2) + purpose_home_improvement + purpose_major_purchase + total_acc + open_acc + acc_now_delinq + purpose_small_business + purpose_moving + purpose_other + purpose_house + purpose_medical, data = data.standard.train)
 summary(glm.standard.fit.best)
 ```
 
@@ -724,9 +845,6 @@ data.caret.test <- model_data[-trainData.caret,]
 
 ## Data Pre-processing
 
-```{r}
-caret_data <- model_data
-```
 
 ### Impute Data
 ```{r}
@@ -891,3 +1009,84 @@ abline (0,1)
 ```
 
 The exact same problem appears, where it over predicts the interest rate on the low end and under predicts it on the high end.
+
+## Another attempt using caret to pick the best
+```{r}
+#preprocPar.bagged <- preProcess(data.caret.train, method = c("scale", "center", "bagImpute", "nzv"))
+preProcess_model <- preProcess(data.caret.train, method=c("scale", "center", "bagImpute", "nzv"))
+trainData <- predict(preProcess_model, newdata = data.caret.train)
+
+# Append the Y variable
+trainData$int_rate <- data.caret.train$int_rate
+
+x <- data.caret.train[,2:60]
+
+
+subsets <- c(1:5, 10, 15, 18)
+
+ctrl <- rfeControl(functions = rfFuncs,
+                   method = "repeatedcv",
+                   repeats = 5,
+                   verbose = FALSE)
+
+# This took over two hours and did not finish.
+lmProfile <- rfe(x=trainData[,2:42], y=trainData$int_rate,
+                 sizes = subsets,
+                 rfeControl = ctrl)
+
+lmProfile
+
+#train_transformed.bagged <- predict(preprocPar.bagged, data.caret.train)
+#test_transformed.bagged <- predict(preprocPar.bagged, data.caret.test)
+```
+##
+
+
+## Mars model
+```{r}
+# Set the seed for reproducibility
+set.seed(1)
+
+# Train the model using randomForest and predict on the training data itself.
+model_mars = train(int_rate ~ ., data=trainData, method='earth')
+fitted <- predict(model_mars)
+
+plot(model_mars, main="Model Accuracies with MARS")
+
+varimp_mars <- varImp(model_mars)
+plot(varimp_mars, main="Variable Importance with MARS")
+
+```
+
+Test Data
+```{r}
+# preProcess_test <- preProcess(data.caret.test, method=c("scale", "center", "bagImpute", "nzv")) # I don't think we need to do this again for test.
+testData <- predict(preProcess_model, newdata = data.caret.test)
+predicted <- predict(model_mars, testData)
+
+```
+
+## LASSO model
+
+```{r}
+# Set the seed for reproducibility
+set.seed(1)
+
+# Train the model using randomForest and predict on the training data itself.
+model_lasso = train(int_rate ~ ., data=trainData, method='lasso')
+fitted <- predict(model_lasso)
+
+plot(model_mars, main="Model Accuracies with LASSO")
+
+varimp_lasso <- varImp(model_lasso)
+plot(varimp_mars, main="Variable Importance with LASSO")
+```
+
+
+Test Data
+```{r}
+# preProcess_test <- preProcess(data.caret.test, method=c("scale", "center", "bagImpute", "nzv")) # I don't think we need to do this again for test.
+testData <- predict(preProcess_model, newdata = data.caret.test)
+predicted <- predict(model_lasso, testData)
+
+```
