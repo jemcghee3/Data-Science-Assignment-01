@@ -7,6 +7,9 @@ This file is separate because we have visualizations and other attempts to see h
 This file contains our best cleaning methods.
 dd
 Load the data and clean it:
+
+The caret MARS model is currently the best with a test MSE of 8.240425
+
 ```{r}
 rm(list=ls())
 par(mfrow=c(1,1))
@@ -1019,8 +1022,12 @@ trainData <- predict(preProcess_model, newdata = data.caret.train)
 # Append the Y variable
 trainData$int_rate <- data.caret.train$int_rate
 
-x <- data.caret.train[,2:60]
 
+```
+
+
+```{r}
+x <- select(trainData, -int_rate)
 
 subsets <- c(1:5, 10, 15, 18)
 
@@ -1030,14 +1037,11 @@ ctrl <- rfeControl(functions = rfFuncs,
                    verbose = FALSE)
 
 # This took over two hours and did not finish.
-lmProfile <- rfe(x=trainData[,2:42], y=trainData$int_rate,
+lmProfile <- rfe(x=x, y=trainData$int_rate,
                  sizes = subsets,
                  rfeControl = ctrl)
 
 lmProfile
-
-#train_transformed.bagged <- predict(preprocPar.bagged, data.caret.train)
-#test_transformed.bagged <- predict(preprocPar.bagged, data.caret.test)
 ```
 ##
 
@@ -1066,6 +1070,20 @@ predicted <- predict(model_mars, testData)
 
 ```
 
+```{r}
+(MSE_mars <- mean((data.caret.test$int_rate-predicted)^2)) 
+          
+```
+Hooray! [1] 8.240425
+
+
+```{r}
+plot(predicted,data.caret.test$int_rate)
+abline (0,1)
+```
+
+
+
 ## LASSO model
 
 ```{r}
@@ -1074,19 +1092,28 @@ set.seed(1)
 
 # Train the model using randomForest and predict on the training data itself.
 model_lasso = train(int_rate ~ ., data=trainData, method='lasso')
-fitted <- predict(model_lasso)
+fitted_lasso <- predict(model_lasso)
 
-plot(model_mars, main="Model Accuracies with LASSO")
+plot(model_lasso, main="Model Accuracies with LASSO")
 
-varimp_lasso <- varImp(model_lasso)
-plot(varimp_mars, main="Variable Importance with LASSO")
 ```
 
 
 Test Data
 ```{r}
-# preProcess_test <- preProcess(data.caret.test, method=c("scale", "center", "bagImpute", "nzv")) # I don't think we need to do this again for test.
-testData <- predict(preProcess_model, newdata = data.caret.test)
-predicted <- predict(model_lasso, testData)
+testData_lasso <- predict(preProcess_model, newdata = data.caret.test)
+predicted_lasso <- predict(model_lasso, testData_lasso)
 
+```
+
+```{r}
+(MSE_lasso <- mean((data.caret.test$int_rate-predicted_lasso)^2)) 
+          
+```
+[1] 11.68413
+
+
+```{r}
+plot(predicted_lasso,data.caret.test$int_rate)
+abline (0,1)
 ```
