@@ -1015,7 +1015,6 @@ The exact same problem appears, where it over predicts the interest rate on the 
 
 ## Another attempt using caret to pick the best
 ```{r}
-#preprocPar.bagged <- preProcess(data.caret.train, method = c("scale", "center", "bagImpute", "nzv"))
 preProcess_model <- preProcess(data.caret.train, method=c("scale", "center", "bagImpute", "nzv"))
 trainData <- predict(preProcess_model, newdata = data.caret.train)
 
@@ -1025,7 +1024,7 @@ trainData$int_rate <- data.caret.train$int_rate
 
 ```
 
-
+this code currently does nothing
 ```{r}
 x <- select(trainData, -int_rate)
 
@@ -1066,12 +1065,12 @@ Test Data
 ```{r}
 # preProcess_test <- preProcess(data.caret.test, method=c("scale", "center", "bagImpute", "nzv")) # I don't think we need to do this again for test.
 testData <- predict(preProcess_model, newdata = data.caret.test)
-predicted <- predict(model_mars, testData)
+predicted_mars <- predict(model_mars, testData)
 
 ```
 
 ```{r}
-(MSE_mars <- mean((data.caret.test$int_rate-predicted)^2)) 
+(MSE_mars <- mean((data.caret.test$int_rate-predicted_mars)^2)) 
           
 ```
 Hooray! [1] 8.240425
@@ -1117,3 +1116,33 @@ predicted_lasso <- predict(model_lasso, testData_lasso)
 plot(predicted_lasso,data.caret.test$int_rate)
 abline (0,1)
 ```
+
+
+
+### bagged trees
+
+```{r}
+fitControl <- rfeControl(functions = rfFuncs,
+                   method = "repeatedcv",
+                   repeats = 5,
+                   verbose = FALSE)
+
+baggedGrid <-  expand.grid(interaction.depth = c(1, 5, 9), 
+                        n.trees = (1:30)*50, 
+                        shrinkage = 0.1,
+                        n.minobsinnode = 20)
+                        
+nrow(gbmGrid)
+
+set.seed(1)
+bagged.fit <- train(int_rate ~ ., data = trainData, 
+                 method = "gbm", 
+                 trControl = fitControl, 
+                 verbose = FALSE, 
+                 ## Now specify the exact models 
+                 ## to evaluate:
+                 tuneGrid = gbmGrid)
+bagged.fit
+
+```
+
