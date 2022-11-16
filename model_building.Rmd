@@ -21,6 +21,7 @@ library(corrplot) # for visualization but probably not needed in final.
 library(boot) # load library boot to use cv.glm
 library(glmnet) # for ridge regression and lasso regression
 library(caret) # another group said this was very helpful for getting pretty data that got them an MSE of 8 with LASSO, but I still get 13
+library(earth)
 
 raw_data <- read.csv2("./LCdata.csv", header = TRUE, row.names=NULL, sep=";")
 
@@ -1064,21 +1065,37 @@ plot(varimp_mars, main="Variable Importance with MARS")
 
 ```
 
+What parameters does the model have
+```{r}
+model_mars$bestTune
+```
+model 3
+nprune = 41
+degree = 1
+
+Try to build the model without using train()
+```{r}
+earth_manual <- earth(int_rate ~ ., data = trainData, degree = 1, nprune = 41)
+summary(earth_manual)
+
+```
+
+
 Test Data
 ```{r}
 # preProcess_test <- preProcess(data.caret.test, method=c("scale", "center", "bagImpute", "nzv")) # I don't think we need to do this again for test.
 testData <- predict(preProcess_model, newdata = data.caret.test)
 predicted_mars <- predict(model_mars, testData)
-
+predicted_mars_manual <- predict(earth_manual, testData)
 ```
 
 ```{r}
 (MSE_mars <- mean((data.caret.test$int_rate-predicted_mars)^2)) 
-          
+(MSE_mars_manual <- mean((data.caret.test$int_rate-predicted_mars_manual)^2))
 ```
 Hooray! [1] 8.240425
 [1] 6.56588 this time, which seems like a big difference. Why did the seed not give the same answer?
-
+mars_manual gives the same result!
 
 ```{r}
 plot(predicted_mars,data.caret.test$int_rate)
