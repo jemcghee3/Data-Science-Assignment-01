@@ -53,8 +53,6 @@ my_data$funded_amnt_inv <- as.integer(my_data$funded_amnt_inv)
 my_data$emp_length <- as.integer(ordered(my_data$emp_length, levels = c("n/a", "< 1 year", "1 year", "2 years", "3 years", "4 years", "5 years", "6 years", "7 years", "8 years", "9 years", "10+ years"))) - 1 # does this need to consider na as unemployed?
 
 # drop NA
-# my_data <- my_data %>%  # note this drops 40,000 records
-#  drop_na(emp_length) # this no longer does anything since n/a replaced above.
 my_data <- filter(my_data, ! is.na(my_data$home_ownership))
 my_data <- filter(my_data, ! is.na(my_data$annual_inc))
 my_data <- filter(my_data, ! is.na(my_data$delinq_2yrs))
@@ -838,6 +836,8 @@ This did not improve the situation. MSE went down to 12.39, which is exactly the
 
 # Caret library
 
+Run this chunk if running other Caret regressions below
+
 ```{r}
 set.seed(1)
 trainData.caret <- sample(1:nrow(model_data), 0.7*nrow(model_data))
@@ -1014,6 +1014,9 @@ abline (0,1)
 The exact same problem appears, where it over predicts the interest rate on the low end and under predicts it on the high end.
 
 ## Another attempt using caret to pick the best
+
+Run this code to prepare trainData and preProcess_model
+
 ```{r}
 preProcess_model <- preProcess(data.caret.train, method=c("scale", "center", "bagImpute", "nzv"))
 trainData <- predict(preProcess_model, newdata = data.caret.train)
@@ -1050,7 +1053,7 @@ lmProfile
 # Set the seed for reproducibility
 set.seed(1)
 
-# Train the model using randomForest and predict on the training data itself.
+# Train the model using MARS and predict on the training data itself.
 model_mars = train(int_rate ~ ., data=trainData, method='earth')
 fitted <- predict(model_mars)
 
@@ -1074,13 +1077,21 @@ predicted_mars <- predict(model_mars, testData)
           
 ```
 Hooray! [1] 8.240425
+[1] 6.56588 this time, which seems like a big difference. Why did the seed not give the same answer?
 
 
 ```{r}
-plot(predicted,data.caret.test$int_rate)
+plot(predicted_mars,data.caret.test$int_rate)
 abline (0,1)
+
+
 ```
 
+```{r}
+ggplot(aes(x = predicted_mars, y = data.caret.test$int_rate)) +
+  geom_point(alpha = 0.01) +
+  geom_abline(0,1)
+```
 
 
 ## LASSO model
@@ -1119,30 +1130,5 @@ abline (0,1)
 
 
 
-### bagged trees
 
-```{r}
-fitControl <- rfeControl(functions = rfFuncs,
-                   method = "repeatedcv",
-                   repeats = 5,
-                   verbose = FALSE)
-
-baggedGrid <-  expand.grid(interaction.depth = c(1, 5, 9), 
-                        n.trees = (1:30)*50, 
-                        shrinkage = 0.1,
-                        n.minobsinnode = 20)
-                        
-nrow(gbmGrid)
-
-set.seed(1)
-bagged.fit <- train(int_rate ~ ., data = trainData, 
-                 method = "gbm", 
-                 trControl = fitControl, 
-                 verbose = FALSE, 
-                 ## Now specify the exact models 
-                 ## to evaluate:
-                 tuneGrid = gbmGrid)
-bagged.fit
-
-```
 
