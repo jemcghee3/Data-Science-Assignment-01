@@ -8,7 +8,7 @@ This file contains our best cleaning methods.
 dd
 Load the data and clean it:
 
-The caret MARS model is currently the best with a test MSE of 8.240425
+The caret MARS model is currently the best with a test MSE of 6.56588
 
 ```{r}
 rm(list=ls())
@@ -20,7 +20,7 @@ library(fastDummies) # to make dummy variables
 library(corrplot) # for visualization but probably not needed in final.
 library(boot) # load library boot to use cv.glm
 library(glmnet) # for ridge regression and lasso regression
-library(caret) # another group said this was very helpful for getting pretty data that got them an MSE of 8 with LASSO, but I still get 13
+library(caret) # very helpful for training a model
 library(earth)
 
 raw_data <- read.csv2("./LCdata.csv", header = TRUE, row.names=NULL, sep=";")
@@ -1125,6 +1125,10 @@ plot(model_lasso, main="Model Accuracies with LASSO")
 
 ```
 
+```{r}
+model_lasso$bestTune
+```
+3   fraction = 0.9
 
 Test Data
 ```{r}
@@ -1138,6 +1142,7 @@ predicted_lasso <- predict(model_lasso, testData_lasso)
           
 ```
 [1] 11.68413
+[1] 9.36435
 
 
 ```{r}
@@ -1145,7 +1150,7 @@ plot(predicted_lasso,data.caret.test$int_rate)
 abline (0,1)
 ```
 
-
+This doesn't look bad, but it's not as good as MARS.
 
 
 
