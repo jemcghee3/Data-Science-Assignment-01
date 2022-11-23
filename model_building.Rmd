@@ -8,7 +8,8 @@ This file contains our best cleaning methods.
 dd
 Load the data and clean it:
 
-The caret MARS model is currently the best with a test MSE of 6.56588
+The caret GBM model is the currently the best with a test MSE of 6.162478.
+The caret MARS model is second best with a test MSE of 6.56588
 
 ```{r}
 rm(list=ls())
@@ -22,6 +23,7 @@ library(boot) # load library boot to use cv.glm
 library(glmnet) # for ridge regression and lasso regression
 library(caret) # very helpful for training a model
 library(earth)
+library(gbm)
 
 raw_data <- read.csv2("./LCdata.csv", header = TRUE, row.names=NULL, sep=";")
 
@@ -1153,4 +1155,93 @@ abline (0,1)
 This doesn't look bad, but it's not as good as MARS.
 
 
+## Gradient Boosting
+
+```{r}
+model_gbm <- train(int_rate ~ .,
+                   data = trainData,
+                   method = "gbm",
+                   trControl = trainControl(method = "repeatedcv", 
+                                             number = 5, 
+                                             repeats = 3, 
+                                             verboseIter = FALSE),
+                   verbose = 0)
+model_gbm
+
+```
+The above took about two hours to run and produced the following: 
+
+Stochastic Gradient Boosting 
+
+558660 samples
+    41 predictor
+
+No pre-processing
+Resampling: Cross-Validated (5 fold, repeated 3 times) 
+Summary of sample sizes: 446927, 446929, 446929, 446927, 446928, 446928, ... 
+Resampling results across tuning parameters:
+
+  interaction.depth  n.trees  RMSE      Rsquared   MAE     
+  1                   50      3.346992  0.4583690  2.654495
+  1                  100      3.123952  0.5196202  2.471047
+  1                  150      3.000790  0.5527215  2.372149
+  2                   50      3.022432  0.5530334  2.384909
+  2                  100      2.770724  0.6159621  2.184578
+  2                  150      2.640738  0.6461271  2.081313
+  3                   50      2.838252  0.6033087  2.237145
+  3                  100      2.599667  0.6571138  2.048011
+  3                  150      2.481392  0.6851175  1.954902
+
+Tuning parameter 'shrinkage' was held constant at a value of 0.1
+Tuning parameter 'n.minobsinnode' was held constant at a value of 10
+RMSE was used to select the optimal model using the smallest value.
+The final values used for the model were n.trees = 150, interaction.depth = 3, shrinkage = 0.1 and n.minobsinnode = 10.
+```{r}
+model_gbm$bestTune
+```
+model 9
+ 
+n.trees 150
+
+interaction.depth 3
+
+shrinkage 0.1
+
+n.minobsinnode 10
+
+
+Try to build the model without using train()
+```{r}
+gbm_manual <- gbm(int_rate ~ ., data = trainData, n.trees = 150, interaction.depth = 3, shrinkage = 0.1, n.minobsinnode = 10)
+summary(gbm_manual)
+
+```
+
+Using variables with rel.inf > 0
+```{r}
+gbm_manual.2 <- gbm(int_rate ~ open_acc_6m + all_util + inq_last_12m + revol_util + il_util + total_rev_hi_lim + open_rv_24m + funded_amnt_inv + purpose_credit_card + loan_amnt + mths_since_last_delinq + total_acc + open_rv_12m + inq_last_6mths + annual_inc + mths_since_last_major_derog + delinq_2yrs + verification_status_Verified + funded_amnt + dti + tot_cur_bal + open_acc + verification_status_Source + inq_fi + mths_since_rcnt_il + open_il_24m + pub_rec + open_il_6m, data = trainData, n.trees = 150, interaction.depth = 3, shrinkage = 0.1, n.minobsinnode = 10)
+summary(gbm_manual.2)
+
+```
+Test Data
+```{r}
+testData <- predict(preProcess_model, newdata = data.caret.test)
+predicted_gbm <- predict(model_gbm, testData)
+predicted_gbm_manual <- predict(gbm_manual, testData)
+predicted_gbm_manual.2 <- predict(gbm_manual.2, testData)
+```
+
+```{r}
+(MSE_gbm <- mean((data.caret.test$int_rate-predicted_gbm)^2)) 
+(MSE_gbm_manual <- mean((data.caret.test$int_rate-predicted_gbm_manual)^2)) 
+(MSE_gbm_manual.2 <- mean((data.caret.test$int_rate-predicted_gbm_manual.2)^2)) 
+```
+[1] 6.162478
+[1] 6.180476 the manual model is not an exact replica of the train() model, which is odd
+[1] 6.18611 cutting varaibles that the model says are not relevant does not significantly change the result
+
+```{r}
+plot(predicted_gbm,data.caret.test$int_rate)
+abline (0,1)
+```
 
