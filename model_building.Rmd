@@ -25,6 +25,7 @@ library(caret) # very helpful for training a model
 library(earth)
 library(gbm)
 
+
 raw_data <- read.csv2("./LCdata.csv", header = TRUE, row.names=NULL, sep=";")
 
 my_data <- raw_data
@@ -77,9 +78,6 @@ my_data <- dummy_columns(my_data, select_columns = "application_type", remove_fi
 my_data <- dummy_columns(my_data, select_columns = "verification_status_joint", remove_first_dummy = TRUE, remove_selected_columns = TRUE)
 my_data <- dummy_columns(my_data, select_columns = "initial_list_status", remove_first_dummy = TRUE, remove_selected_columns = TRUE)
 
-# remove outliers
-my_data$annual_inc <- ifelse(my_data$annual_inc >= 1000000, my_data$annual_inc / 100, my_data$annual_inc)
-
 # Correct data errors
 my_data$inq_last_12m <- ifelse(my_data$inq_last_12m < 0, my_data$inq_last_12m * -1, my_data$inq_last_12m) # eliminate negatives
 
@@ -99,11 +97,28 @@ my_data$dti <- ifelse(is.na(dti.applicant), my_data$dti, dti.applicant)
 # drop joint data now that is not used
 my_data <- select(my_data, -c("annual_inc_joint", "dti_joint"))
 
+# remove outliers
+my_data$annual_inc <- ifelse(my_data$annual_inc >= 1000000, my_data$annual_inc / 100, my_data$annual_inc)
+
+# remove outliers with a k value > 3 or < -3
+
 
 model_data <- my_data #make test modeling data
 ```
 
 
+Try to transform the y variable to make more normal, less rightward skewed
+```{r}
+ggplot(my_data, aes(x = int_rate)) +
+  geom_histogram(binwidth = 1)
+
+ggplot(my_data, aes(x = log(int_rate))) +
+  geom_histogram(binwidth = .1)
+
+ggplot(my_data, aes(x = sqrt(int_rate))) +
+  geom_histogram(binwidth = .1)
+
+```
 
 
 
@@ -848,13 +863,20 @@ data.caret.train <- model_data[trainData.caret,]
 data.caret.test <- model_data[-trainData.caret,]
 ```
 
+for the no_na dataset
+```{r}
+set.seed(1)
+trainData.caret <- sample(1:nrow(model_data), 0.7*nrow(model_data_no_na))
+data.caret.train <- model_data_no_na[trainData.caret,]
+data.caret.test <- model_data_no_na[-trainData.caret,]
+```
 
 ## Data Pre-processing
 
 
 ### Impute Data
 ```{r}
-
+rm(model_data)
 ```
 
 
@@ -1025,30 +1047,17 @@ preProcess_model <- preProcess(data.caret.train, method=c("scale", "center", "ba
 trainData <- predict(preProcess_model, newdata = data.caret.train)
 
 # Append the Y variable
-trainData$int_rate <- data.caret.train$int_rate
+trainData$int_rate <- data.caret.train$int_rate # current run
+trainData$int_rate <- log(data.caret.train$int_rate)
+trainData$int_rate <- sqrt(data.caret.train$int_rate)
+
 
 
 ```
 
-this code currently does nothing
-```{r}
-x <- select(trainData, -int_rate)
 
-subsets <- c(1:5, 10, 15, 18)
 
-ctrl <- rfeControl(functions = rfFuncs,
-                   method = "repeatedcv",
-                   repeats = 5,
-                   verbose = FALSE)
 
-# This took over two hours and did not finish.
-lmProfile <- rfe(x=x, y=trainData$int_rate,
-                 sizes = subsets,
-                 rfeControl = ctrl)
-
-lmProfile
-```
-##
 
 
 ## Mars model
@@ -1237,8 +1246,9 @@ predicted_gbm_manual.2 <- predict(gbm_manual.2, testData)
 (MSE_gbm_manual.2 <- mean((data.caret.test$int_rate-predicted_gbm_manual.2)^2)) 
 ```
 [1] 6.162478
-[1] 6.180476 the manual model is not an exact replica of the train() model, which is odd
+[1] 6.180476 the manual model is not an exact replica of the train() model, which is odd. When using the model_data_no_na, the MSE is 12.14618.
 [1] 6.18611 cutting varaibles that the model says are not relevant does not significantly change the result
+
 
 ```{r}
 plot(predicted_gbm,data.caret.test$int_rate)
