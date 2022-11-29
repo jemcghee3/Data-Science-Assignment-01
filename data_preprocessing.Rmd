@@ -356,7 +356,7 @@ should be: Int
 
 Filter for null, zero, negative
 ```{r}
-filter(my_data, is.na(my_data$annual_inc)) # four items are non-Null, drop them.
+filter(my_data, is.na(my_data$annual_inc)) # four items are Null, drop them.
 filter(my_data, my_data$annual_inc == 0) # two are zero income, but significant income from joint applicant, so don't drop them.
 filter(my_data, my_data$annual_inc < 10000) # 460 applicants.
 filter(my_data, my_data$annual_inc < 500) # only the two 0 income applicants

@@ -863,7 +863,7 @@ data.caret.train <- model_data[trainData.caret,]
 data.caret.test <- model_data[-trainData.caret,]
 ```
 
-for the no_na dataset
+for the no_na dataset. This produces a significantly worse result than above.
 ```{r}
 set.seed(1)
 trainData.caret <- sample(1:nrow(model_data), 0.7*nrow(model_data_no_na))
@@ -1047,9 +1047,9 @@ preProcess_model <- preProcess(data.caret.train, method=c("scale", "center", "ba
 trainData <- predict(preProcess_model, newdata = data.caret.train)
 
 # Append the Y variable
-trainData$int_rate <- data.caret.train$int_rate # current run
-trainData$int_rate <- log(data.caret.train$int_rate)
-trainData$int_rate <- sqrt(data.caret.train$int_rate)
+trainData$int_rate <- data.caret.train$int_rate 
+#trainData$int_rate <- log(data.caret.train$int_rate)
+#trainData$int_rate <- sqrt(data.caret.train$int_rate)
 
 
 
@@ -1094,7 +1094,6 @@ summary(earth_manual)
 
 Test Data
 ```{r}
-# preProcess_test <- preProcess(data.caret.test, method=c("scale", "center", "bagImpute", "nzv")) # I don't think we need to do this again for test.
 testData <- predict(preProcess_model, newdata = data.caret.test)
 predicted_mars <- predict(model_mars, testData)
 predicted_mars_manual <- predict(earth_manual, testData)
@@ -1102,14 +1101,17 @@ predicted_mars_manual <- predict(earth_manual, testData)
 
 ```{r}
 (MSE_mars <- mean((data.caret.test$int_rate-predicted_mars)^2)) 
-(MSE_mars_manual <- mean((data.caret.test$int_rate-predicted_mars_manual)^2))
+(MSE_mars_manual <- mean((data.caret.test$int_rate-exp(predicted_mars_manual))^2)) # must square predicted mars manual if using sqrt for int_rate, or exp() if log
+
 ```
 Hooray! [1] 8.240425
 [1] 6.56588 this time, which seems like a big difference. Why did the seed not give the same answer?
 mars_manual gives the same result!
+mars_manual gives [1] 8.339944 when using sqrt of int_rate
+mars_manual gives [1] 8.652331 when using log of int_rate
 
 ```{r}
-plot(predicted_mars,data.caret.test$int_rate)
+plot(exp(predicted_mars_manual),data.caret.test$int_rate)
 abline (0,1)
 
 
@@ -1167,6 +1169,12 @@ This doesn't look bad, but it's not as good as MARS.
 ## Gradient Boosting
 
 ```{r}
+
+gbmGrid <-  expand.grid(interaction.depth = c(3, 6, 9, 12),
+                        n.trees = (1:30)*50,
+                        shrinkage = 0.1,
+                        n.minobsinnode = c(10, 20))
+
 model_gbm <- train(int_rate ~ .,
                    data = trainData,
                    method = "gbm",
@@ -1174,11 +1182,12 @@ model_gbm <- train(int_rate ~ .,
                                              number = 5, 
                                              repeats = 3, 
                                              verboseIter = FALSE),
+                   tuneGrid = gbmGrid,
                    verbose = 0)
 model_gbm
 
 ```
-The above took about two hours to run and produced the following: 
+The above took about two hours to run (without gbmGrid) and produced the following: 
 
 Stochastic Gradient Boosting 
 
@@ -1205,6 +1214,10 @@ Tuning parameter 'shrinkage' was held constant at a value of 0.1
 Tuning parameter 'n.minobsinnode' was held constant at a value of 10
 RMSE was used to select the optimal model using the smallest value.
 The final values used for the model were n.trees = 150, interaction.depth = 3, shrinkage = 0.1 and n.minobsinnode = 10.
+
+
+started at 12:55pm using gridTune. Still going at 06:20 four days later
+
 ```{r}
 model_gbm$bestTune
 ```

@@ -249,3 +249,8 @@ visualization.twb
 .Rproj.user/shared/notebooks/B4AE49B4-data_preprocessing/1/s/c3w14ocxjx5ls/000013.rdf
 .Rproj.user
 -T480-2.Rhistory
+-T480.RData
+1500treesBestTune.rds
+1500treesGBM.rds
+Data Science Group Report.docx
+model_building copy.Rmd
