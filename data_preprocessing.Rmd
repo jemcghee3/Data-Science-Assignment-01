@@ -760,7 +760,7 @@ count(my_data, mths_since_last_record == 120)
 
 ```
 
-Thos with no public records have higher interest rates than those who do, which I would not expect.
+Those with no public records have higher interest rates than those who do, which I would not expect.
 
 ```{r}
 ggplot(data = my_data) +

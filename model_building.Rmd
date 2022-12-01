@@ -25,6 +25,9 @@ library(caret) # very helpful for training a model
 library(earth)
 library(gbm)
 
+#library(doParallel) # this is to run on multiple cores of your cpu.
+#cl <- makePSOCKcluster(7) # the number here is the number of cores to use
+#registerDoParallel(cl)
 
 raw_data <- read.csv2("./LCdata.csv", header = TRUE, row.names=NULL, sep=";")
 
@@ -1169,18 +1172,22 @@ This doesn't look bad, but it's not as good as MARS.
 ## Gradient Boosting
 
 ```{r}
+#gbmGrid <-  expand.grid(interaction.depth = c(9, 12),
+#                        n.trees = 1500,
+#                        shrinkage = 0.1,
+#                        n.minobsinnode = 10)
 
-gbmGrid <-  expand.grid(interaction.depth = c(3, 6, 9, 12),
-                        n.trees = (1:30)*50,
-                        shrinkage = 0.1,
-                        n.minobsinnode = c(10, 20))
+#gbmGrid <-  expand.grid(interaction.depth = c(3, 6, 9, 12), # This code ran for days and didn't finish.
+#                        n.trees = (1:30)*50,
+#                        shrinkage = 0.1,
+#                        n.minobsinnode = c(10, 20))
 
 model_gbm <- train(int_rate ~ .,
                    data = trainData,
                    method = "gbm",
                    trControl = trainControl(method = "repeatedcv", 
                                              number = 5, 
-                                             repeats = 3, 
+                                             repeats = 1, 
                                              verboseIter = FALSE),
                    tuneGrid = gbmGrid,
                    verbose = 0)
