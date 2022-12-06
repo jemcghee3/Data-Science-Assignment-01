@@ -25,9 +25,9 @@ library(caret) # very helpful for training a model
 library(earth)
 library(gbm)
 
-#library(doParallel) # this is to run on multiple cores of your cpu.
-#cl <- makePSOCKcluster(7) # the number here is the number of cores to use
-#registerDoParallel(cl)
+library(doParallel) # this is to run on multiple cores of your cpu.
+cl <- makePSOCKcluster(7) # the number here is the number of cores to use
+registerDoParallel(cl)
 
 raw_data <- read.csv2("./LCdata.csv", header = TRUE, row.names=NULL, sep=";")
 
@@ -104,7 +104,7 @@ my_data <- select(my_data, -c("annual_inc_joint", "dti_joint"))
 my_data$annual_inc <- ifelse(my_data$annual_inc >= 1000000, my_data$annual_inc / 100, my_data$annual_inc)
 
 # remove outliers with a k value > 3 or < -3
-
+# decided not to do this because the chosen model is resistant to outliers
 
 model_data <- my_data #make test modeling data
 ```
