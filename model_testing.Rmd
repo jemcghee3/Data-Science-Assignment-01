@@ -1,0 +1,20 @@
+---
+title: "Model Testing"
+output: html_notebook
+---
+
+```{r}
+model <- readRDS("./1500treesGBM.rds")
+trainData <- readRDS("./trainData.rds")
+data.caret.test <- readRDS("./dataCaretTest.rds")
+testData <- readRDS("./testData.rds")
+```
+
+```{r}
+predicted_gbm <- predict(model, testData)
+```
+
+```{r}
+(MSE_gbm <- mean((data.caret.test$int_rate-predicteud_gbm)^2)) 
+```
+

@@ -254,3 +254,8 @@ visualization.twb
 1500treesGBM.rds
 Data Science Group Report.docx
 model_building copy.Rmd
+trainData.rds
+testData.rds
+model_building.nb-McGheePC.html
+model_building-McGheePC.Rmd
+dataCaretTest.rds
