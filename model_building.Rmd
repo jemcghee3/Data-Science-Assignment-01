@@ -25,8 +25,8 @@ library(caret) # very helpful for training a model
 library(earth)
 library(gbm)
 
-library(doParallel) # this is to run on multiple cores of your cpu.
-cl <- makePSOCKcluster(7) # the number here is the number of cores to use
+library(doParallel)
+cl <- makePSOCKcluster(7)
 registerDoParallel(cl)
 
 raw_data <- read.csv2("./LCdata.csv", header = TRUE, row.names=NULL, sep=";")
@@ -98,13 +98,38 @@ my_data$annual_inc <- annual_inc.applicant
 my_data$dti <- ifelse(is.na(dti.applicant), my_data$dti, dti.applicant)
 
 # drop joint data now that is not used
-my_data <- select(my_data, -c("annual_inc_joint", "dti_joint"))
+my_data <- select(my_data, -c("annual_inc_joint", "dti_joint", "application_type_JOINT", "verification_status_joint_Source", "verification_status_joint_Verified")) 
+# drop the verified status of the joint applicant due to no way to handle a partially verified application after combining
 
 # remove outliers
 my_data$annual_inc <- ifelse(my_data$annual_inc >= 1000000, my_data$annual_inc / 100, my_data$annual_inc)
 
-# remove outliers with a k value > 3 or < -3
-# decided not to do this because the chosen model is resistant to outliers
+# remove outliers with a z-score > 3 or < -3
+# we could work on this, but trees are relatively robust against outliers
+
+# make dummy columns factors so that preProcess does not affect them
+typeof(my_data$home_ownership_MORTGAGE)
+my_data$home_ownership_MORTGAGE <- as.factor(my_data$home_ownership_MORTGAGE)
+my_data$home_ownership_NONE <- as.factor(my_data$home_ownership_NONE)
+my_data$home_ownership_OTHER <- as.factor(my_data$home_ownership_OTHER)
+my_data$home_ownership_OWN <- as.factor(my_data$home_ownership_OWN)
+my_data$home_ownership_RENT <- as.factor(my_data$home_ownership_RENT)
+my_data$verification_status_Source <- as.factor(my_data$verification_status_Source)
+my_data$verification_status_Verified <- as.factor(my_data$verification_status_Verified)
+my_data$purpose_credit_card <- as.factor(my_data$purpose_credit_card)
+my_data$purpose_debt_consolidation <- as.factor(my_data$purpose_debt_consolidation)
+my_data$purpose_educational <- as.factor(my_data$purpose_educational)
+my_data$purpose_home_improvement <- as.factor(my_data$purpose_home_improvement)
+my_data$purpose_house <- as.factor(my_data$purpose_house)
+my_data$purpose_major_purchase <- as.factor(my_data$purpose_major_purchase)
+my_data$purpose_medical <- as.factor(my_data$purpose_medical)
+my_data$purpose_moving <- as.factor(my_data$purpose_moving)
+my_data$purpose_other <- as.factor(my_data$purpose_other)
+my_data$purpose_renewable_energy <- as.factor(my_data$purpose_renewable_energy)
+my_data$purpose_small_business <- as.factor(my_data$purpose_small_business)
+my_data$purpose_vacation <- as.factor(my_data$purpose_vacation)
+my_data$purpose_wedding <- as.factor(my_data$purpose_wedding)
+my_data$initial_list_status_w <- as.factor(my_data$initial_list_status_w)
 
 model_data <- my_data #make test modeling data
 ```
@@ -1046,16 +1071,14 @@ The exact same problem appears, where it over predicts the interest rate on the 
 Run this code to prepare trainData and preProcess_model
 
 ```{r}
-preProcess_model <- preProcess(data.caret.train, method=c("scale", "center", "bagImpute", "nzv"))
+data.caret.train <- data.caret.train %>% dplyr::select("int_rate", everything())
+preProcess_model <- preProcess(data.caret.train[, 2:57], method=c("scale", "center", "bagImpute", "nzv"))
 trainData <- predict(preProcess_model, newdata = data.caret.train)
 
 # Append the Y variable
-trainData$int_rate <- data.caret.train$int_rate 
+trainData$int_rate <- data.caret.train$int_rate
 #trainData$int_rate <- log(data.caret.train$int_rate)
 #trainData$int_rate <- sqrt(data.caret.train$int_rate)
-
-
-
 ```
 
 
@@ -1126,6 +1149,25 @@ ggplot(aes(x = predicted_mars, y = data.caret.test$int_rate)) +
   geom_abline(0,1)
 ```
 
+## BagEarth
+
+```{r}
+# Set the seed for reproducibility
+set.seed(1)
+
+bagEarthGrid <-  expand.grid(nprune = c(10, 20, 30, 40, 50),
+                             degree = c(1, 2, 3, 6, 9, 12))
+
+# Train the model using MARS and predict on the training data itself.
+model_bagmars = train(int_rate ~ ., data=trainData, method='bagEarth')
+fitted_bagmars <- predict(model_bagmars)
+
+plot(model_bagmars, main="Model Accuracies with Bagged MARS")
+
+varimp_bagmars <- varImp(model_bagmars)
+plot(varimp_bagmars, main="Variable Importance with Bagged MARS")
+
+```
 
 ## LASSO model
 
@@ -1172,15 +1214,15 @@ This doesn't look bad, but it's not as good as MARS.
 ## Gradient Boosting
 
 ```{r}
-#gbmGrid <-  expand.grid(interaction.depth = c(9, 12),
-#                        n.trees = 1500,
-#                        shrinkage = 0.1,
-#                        n.minobsinnode = 10)
+gbmGrid <-  expand.grid(interaction.depth = c(9, 12),
+                        n.trees = 1500,
+                        shrinkage = 0.1,
+                        n.minobsinnode = 10)
 
-#gbmGrid <-  expand.grid(interaction.depth = c(3, 6, 9, 12), # This code ran for days and didn't finish.
-#                        n.trees = (1:30)*50,
-#                        shrinkage = 0.1,
-#                        n.minobsinnode = c(10, 20))
+gbmGrid <-  expand.grid(interaction.depth = c(1, 2),
+                        n.trees = c(50),
+                        shrinkage = .1,
+                        n.minobsinnode = 10)
 
 model_gbm <- train(int_rate ~ .,
                    data = trainData,
@@ -1188,9 +1230,9 @@ model_gbm <- train(int_rate ~ .,
                    trControl = trainControl(method = "repeatedcv", 
                                              number = 5, 
                                              repeats = 1, 
-                                             verboseIter = FALSE),
+                                             verboseIter = TRUE),
                    tuneGrid = gbmGrid,
-                   verbose = 0)
+                   verbose = 1)
 model_gbm
 
 ```
@@ -1223,10 +1265,32 @@ RMSE was used to select the optimal model using the smallest value.
 The final values used for the model were n.trees = 150, interaction.depth = 3, shrinkage = 0.1 and n.minobsinnode = 10.
 
 
-started at 12:55pm using gridTune. Still going at 06:20 four days later
+started at 12:55pm using gridTune. Still going at 16:38
+Stochastic Gradient Boosting 
 
+558660 samples
+    41 predictor
+
+No pre-processing
+Resampling: Cross-Validated (5 fold, repeated 1 times) 
+Summary of sample sizes: 446929, 446928, 446928, 446926, 446929 
+Resampling results across tuning parameters:
+
+  interaction.depth  RMSE      Rsquared   MAE     
+   9                 1.575202  0.8714148  1.190052
+  12                 1.522454  0.8797444  1.146662
+
+Tuning parameter 'n.trees' was held constant at a value of 1500
+Tuning parameter 'shrinkage'
+ was held constant at a value of 0.1
+Tuning parameter 'n.minobsinnode' was held constant at a
+ value of 10
+RMSE was used to select the optimal model using the smallest value.
+The final values used for the model were n.trees = 1500, interaction.depth = 12, shrinkage =
+ 0.1 and n.minobsinnode = 10.
 ```{r}
 model_gbm$bestTune
+model_gbm$finalModel
 ```
 model 9
  
@@ -1237,6 +1301,37 @@ interaction.depth 3
 shrinkage 0.1
 
 n.minobsinnode 10
+
+
+For the 1500 trees model:
+model 2
+n.trees 1500
+interaction.depth 12
+shrinkage 0.1
+n.minobsinnode 10
+
+Try to build the model with preprocessing built in. This fails due to NAs. I am not sure why preProcess won't clean them.
+```{r}
+gbmGrid <-  expand.grid(interaction.depth = c(1, 2),
+                        n.trees = c(50),
+                        shrinkage = .1,
+                        n.minobsinnode = 10)
+
+model_gbm <- train(int_rate ~ .,
+                   data = data.caret.train,
+                   method = "gbm",
+                   trControl = trainControl(method = "repeatedcv", 
+                                             number = 5, 
+                                             repeats = 1, 
+                                             verboseIter = TRUE),
+                   preProcess = c("bagImpute", "scale", "center", "nzv"),
+                   tuneGrid = gbmGrid,
+                   verbose = 1)
+model_gbm
+
+colSums(is.na(data.caret.train))
+colSums(is.na(trainData))
+```
 
 
 Try to build the model without using train()
@@ -1252,12 +1347,14 @@ gbm_manual.2 <- gbm(int_rate ~ open_acc_6m + all_util + inq_last_12m + revol_uti
 summary(gbm_manual.2)
 
 ```
+
+
 Test Data
 ```{r}
 testData <- predict(preProcess_model, newdata = data.caret.test)
 predicted_gbm <- predict(model_gbm, testData)
-predicted_gbm_manual <- predict(gbm_manual, testData)
-predicted_gbm_manual.2 <- predict(gbm_manual.2, testData)
+#predicted_gbm_manual <- predict(gbm_manual, testData)
+#predicted_gbm_manual.2 <- predict(gbm_manual.2, testData)
 ```
 
 ```{r}
@@ -1268,6 +1365,22 @@ predicted_gbm_manual.2 <- predict(gbm_manual.2, testData)
 [1] 6.162478
 [1] 6.180476 the manual model is not an exact replica of the train() model, which is odd. When using the model_data_no_na, the MSE is 12.14618.
 [1] 6.18611 cutting varaibles that the model says are not relevant does not significantly change the result
+
+1500 trees model: [1] 2.310146
+
+save the model
+```{r}
+saveRDS(model_gbm, file = "1500treesGBM.rds")
+saveRDS(model_gbm$finalModel, file = "1500treesGBM-modelOnly.rds") # "The pre-processing would not be applied to predictions that directly use the object$finalModel object." I think we need to use the other one to capture the preprocessing model.
+saveRDS(trainData, file = "trainData.rds")
+saveRDS(data.caret.test, file ="dataCaretTest.rds")
+saveRDS(testData, file = "testData.rds")
+```
+
+save the preprocesing model. This creates a large file and doesn't seem to stop. I let it make 500mb+ when it should be 30mb.
+```{r}
+saveRDS(preProcess_model, file = "preProcess_model.rds")
+```
 
 
 ```{r}
