@@ -1100,6 +1100,11 @@ plot(model_mars, main="Model Accuracies with MARS")
 varimp_mars <- varImp(model_mars)
 plot(varimp_mars, main="Variable Importance with MARS")
 
+
+```
+
+```{r}
+saveRDS(model_mars, "model_mars.rds")
 ```
 
 What parameters does the model have
@@ -1157,6 +1162,7 @@ set.seed(1)
 
 bagEarthGrid <-  expand.grid(nprune = c(10, 20, 30, 40, 50),
                              degree = c(1, 2, 3, 6, 9, 12))
+                             
 
 # Train the model using MARS and predict on the training data itself.
 model_bagmars = train(int_rate ~ ., data=trainData, method='bagEarth')
