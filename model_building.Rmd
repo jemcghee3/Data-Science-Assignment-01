@@ -25,9 +25,9 @@ library(caret) # very helpful for training a model
 library(earth)
 library(gbm)
 
-#library(doParallel)
-#cl <- makePSOCKcluster(7)
-#registerDoParallel(cl)
+library(doParallel)
+cl <- makePSOCKcluster(3)
+registerDoParallel(cl)
 
 
 raw_data <- read.csv2("./LCdata.csv", header = TRUE, row.names=NULL, sep=";")
@@ -1324,3 +1324,99 @@ saveRDS(preProcess_model, file = "preProcess_model.rds")
 plot(predicted_gbm,data.caret.test$int_rate)
 abline (0,1)
 ```
+
+## xgbTree
+
+tuning parameters
+nrounds (# Boosting Iterations)
+max_depth (Max Tree Depth)
+eta (Shrinkage)
+gamma (Minimum Loss Reduction)
+colsample_bytree (Subsample Ratio of Columns)
+min_child_weight (Minimum Sum of Instance Weight)
+subsample (Subsample Percentage)
+
+to try:
+xgbGrid <-  expand.grid(nrounds = c(50, 75, 100, 150, 200, 250, 500, 1000, 1500, 2000, 5000),
+                        max_depth = c(6, 9, 12, 15, 21),
+                        eta = c(0.3),
+                        gamma = c(0),
+                        colsample_bytree = c(0.5, 0.7, 0.9, 1.0),
+                        min_child_weight = c(5, 15, 200),
+                        subsample = c(0.6))
+                        
+```{r}
+set.seed(1)
+xgbGrid <-  expand.grid(nrounds = c(50, 75, 100, 150, 200, 250, 500, 1000, 1500, 2000, 5000),
+                        max_depth = c(6, 9, 12, 15, 21),
+                        eta = c(0.3),
+                        gamma = c(0),
+                        colsample_bytree = c(1.0),
+                        min_child_weight = c(5),
+                        subsample = c(0.6))
+
+model_xgb <- train(int_rate ~ .,
+                   data = trainData,
+                   method = "xgbTree",
+                   trControl = trainControl(method = "repeatedcv", 
+                                             number = 5, 
+                                             repeats = 1, 
+                                             verboseIter = TRUE),
+                   tuneGrid = xgbGrid,
+                   verbose = 1)
+model_xgb
+```
+besttune
+```{r}
+model_xgb$bestTune
+```
+model 10
+nrounds 2000
+max_depth 6
+eta 0.3
+gamma 0
+colsample_bytree 1
+min_child_weight 5
+subsample 0.6
+
+```{r}
+saveRDS(model_xgb, file = "xgbModel.rds")
+saveRDS(model_xgb$bestTune, file = "xgbModel_bestTune.rds") # only saves the data about what the besttune is
+saveRDS(model_xgb$finalModel, file = "xgbModel_finalModel.rds")
+```
+
+test it
+```{r}
+predicted_xgb <- predict(model_xgb, testData)
+```
+
+```{r}
+(MSE_xgb <- mean((data.caret.test$int_rate-predicted_xgb)^2)) 
+```
+
+## try again
+
+```{r}
+
+set.seed(1)
+xgbGrid <-  expand.grid(nrounds = c(1750, 1900, 2000, 2100, 2250, 2500),
+                        max_depth = c(4, 5, 6, 7, 8),
+                        eta = c(0.3),
+                        gamma = c(0),
+                        colsample_bytree = c(0.6, 1.0),
+                        min_child_weight = c(5),
+                        subsample = c(0.6, 1))
+
+model_xgb.2 <- train(int_rate ~ .,
+                   data = trainData,
+                   method = "xgbTree",
+                   trControl = trainControl(method = "repeatedcv", 
+                                             number = 5, 
+                                             repeats = 1, 
+                                             verboseIter = TRUE),
+                   tuneGrid = xgbGrid,
+                   verbose = 1)
+model_xgb.2
+```
+
+
