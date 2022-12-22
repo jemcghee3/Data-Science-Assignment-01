@@ -2,14 +2,13 @@
 title: "Model Building"
 output: html_notebook
 ---
-This is to organize our models. Pull the code cleaning the data from data_preprocessing.Rmd.
-This file is separate because we have visualizations and other attempts to see how to clean the data the best in that file.
-This file contains our best cleaning methods.
-dd
-Load the data and clean it:
+To run this code, run the following:
 
-The caret GBM model is the currently the best with a test MSE of 6.162478.
-The caret MARS model is second best with a test MSE of 6.56588
+Chunk 1 - this loads libraries and the raw data, performs preprocessing to data
+Chunk 78 - create training and test sets
+Chunk 79 - preprocess data (scaling, centering, imputing, nzv) for training and test sets
+
+From here, run the model you deside below Chunk 79. Chunk 102 is the start of our final model.
 
 ```{r}
 rm(list=ls())
@@ -24,6 +23,7 @@ library(glmnet) # for ridge regression and lasso regression
 library(caret) # very helpful for training a model
 library(earth)
 library(gbm)
+library(xgboost)
 
 library(doParallel)
 cl <- makePSOCKcluster(3)
@@ -859,7 +859,7 @@ abline (0,1)
 This did not improve the situation. MSE went down to 12.39, which is exactly the same as in the glm model.
 
 
-# Caret library
+# Non-Linear Models and Caret LASSO and Ridge Regression
 
 Run this chunk if running other Caret regressions below
 
@@ -1045,7 +1045,7 @@ abline (0,1)
 
 The exact same problem appears, where it over predicts the interest rate on the low end and under predicts it on the high end.
 
-## Another attempt using caret to pick the best
+## Final Model Selection
 
 Run this chunk if running other Caret regressions below
 
@@ -1059,6 +1059,7 @@ data.caret.test <- model_data[-trainData.caret,]
 Run this code to prepare trainData and preProcess_model
 
 ```{r}
+set.seed(1)
 preProcess_model <- preProcess(data.caret.train, method=c("scale", "center", "bagImpute", "nzv"))
 trainData <- predict(preProcess_model, newdata = data.caret.train)
 
@@ -1067,10 +1068,18 @@ trainData$int_rate <- data.caret.train$int_rate
 #trainData$int_rate <- log(data.caret.train$int_rate)
 #trainData$int_rate <- sqrt(data.caret.train$int_rate)
 
-
+testData <- predict(preProcess_model, newdata = data.caret.test)
+testData$int_rate <- data.caret.test$int_rate
 
 ```
 
+save the test data and training data to a file
+```{r}
+saveRDS(data.caret.train, "dataCaretTrain.rds")
+saveRDS(data.caret.test, "dataCaretTest.rds")
+saveRDS(trainData, "trainData.rds")
+saveRDS(testData, "testData.rds")
+```
 
 
 
@@ -1310,6 +1319,7 @@ save the model
 ```{r}
 saveRDS(model_gbm, file = "1500treesGBM.rds")
 saveRDS(model_gbm$finalModel, file = "1500treesGBM-modelOnly.rds") # "The pre-processing would not be applied to predictions that directly use the object$finalModel object." I think we need to use the other one to capture the preprocessing model.
+saveRDS(data.caret.train, file = "dataCaretTrain.rds")
 saveRDS(trainData, file = "trainData.rds")
 saveRDS(data.caret.test, file ="dataCaretTest.rds")
 saveRDS(testData, file = "testData.rds")
@@ -1366,6 +1376,85 @@ model_xgb <- train(int_rate ~ .,
                    verbose = 1)
 model_xgb
 ```
+eXtreme Gradient Boosting 
+
+558660 samples
+    41 predictor
+
+No pre-processing
+Resampling: Cross-Validated (5 fold, repeated 1 times) 
+Summary of sample sizes: 446929, 446929, 446928, 446927, 446927 
+Resampling results across tuning parameters:
+
+  max_depth  nrounds  RMSE      Rsquared   MAE     
+   6           50     1.893000  0.8136221  1.441961
+   6           75     1.791977  0.8328613  1.362010
+   6          100     1.724223  0.8452046  1.306483
+   6          150     1.646863  0.8587421  1.243502
+   6          200     1.597101  0.8671392  1.201478
+   6          250     1.560512  0.8731636  1.170818
+   6          500     1.472607  0.8871055  1.093660
+   6         1000     1.420922  0.8949800  1.042966
+   6         1500     1.405342  0.8973410  1.026672
+   6         2000     1.400051  0.8981748  1.020104
+   6         5000     1.406854  0.8974337  1.022483
+   9           50     1.675656  0.8537559  1.255823
+   9           75     1.621759  0.8630658  1.210725
+   9          100     1.591909  0.8681133  1.185005
+   9          150     1.553362  0.8745210  1.150797
+   9          200     1.536086  0.8773686  1.134212
+   9          250     1.524846  0.8792254  1.123421
+   9          500     1.512244  0.8814518  1.108622
+   9         1000     1.522010  0.8801811  1.114895
+   9         1500     1.530335  0.8789985  1.122099
+   9         2000     1.535236  0.8782928  1.126543
+   9         5000     1.539767  0.8776443  1.130767
+  12           50     1.603697  0.8661673  1.178055
+  12           75     1.586330  0.8691730  1.162409
+  12          100     1.579804  0.8703527  1.155873
+  12          150     1.578074  0.8707902  1.153206
+  12          200     1.581222  0.8703987  1.155541
+  12          250     1.584817  0.8699018  1.158625
+  12          500     1.599589  0.8676925  1.172526
+  12         1000     1.604293  0.8669835  1.177331
+  12         1500     1.604454  0.8669609  1.177479
+  12         2000     1.604456  0.8669607  1.177480
+  12         5000     1.604458  0.8669605  1.177481
+  15           50     1.647845  0.8588671  1.195937
+  15           75     1.647583  0.8590650  1.196387
+  15          100     1.653633  0.8581397  1.202051
+  15          150     1.662373  0.8567792  1.210596
+  15          200     1.666833  0.8560807  1.215294
+  15          250     1.668892  0.8557600  1.217516
+  15          500     1.670708  0.8554752  1.219405
+  15         1000     1.670709  0.8554752  1.219399
+  15         1500     1.670709  0.8554752  1.219399
+  15         2000     1.670709  0.8554752  1.219399
+  15         5000     1.670709  0.8554752  1.219399
+  21           50     1.726068  0.8452990  1.250364
+  21           75     1.731557  0.8444096  1.256778
+  21          100     1.733498  0.8440928  1.259245
+  21          150     1.734219  0.8439750  1.260197
+  21          200     1.734245  0.8439715  1.260250
+  21          250     1.734235  0.8439735  1.260241
+  21          500     1.734233  0.8439739  1.260240
+  21         1000     1.734233  0.8439739  1.260240
+  21         1500     1.734233  0.8439739  1.260240
+  21         2000     1.734233  0.8439739  1.260240
+  21         5000     1.734233  0.8439739  1.260240
+
+Tuning parameter 'eta' was held constant at a value of 0.3
+Tuning parameter 'gamma' was held constant at a value
+ of 0
+Tuning parameter 'colsample_bytree' was held constant at a value of 1
+Tuning parameter 'min_child_weight'
+ was held constant at a value of 5
+Tuning parameter 'subsample' was held constant at a value of 0.6
+RMSE was used to select the optimal model using the smallest value.
+The final values used for the model were nrounds = 2000, max_depth = 6, eta = 0.3, gamma = 0, colsample_bytree =
+ 1, min_child_weight = 5 and subsample = 0.6.
+
+
 besttune
 ```{r}
 model_xgb$bestTune
@@ -1380,18 +1469,32 @@ min_child_weight 5
 subsample 0.6
 
 ```{r}
+head(predicted_xgb)
+summary(predicted_xgb)
+```
+
+
+### save it
+```{r}
 saveRDS(model_xgb, file = "xgbModel.rds")
 saveRDS(model_xgb$bestTune, file = "xgbModel_bestTune.rds") # only saves the data about what the besttune is
 saveRDS(model_xgb$finalModel, file = "xgbModel_finalModel.rds")
+saveRDS(preProcess_model, file = "preProcess_model.rds")
 ```
 
-test it
+### load it
+```{r}
+model_xgb <- readRDS("./xgbModel.rds")
+```
+
+### test it
 ```{r}
 predicted_xgb <- predict(model_xgb, testData)
 ```
 
 ```{r}
-(MSE_xgb <- mean((data.caret.test$int_rate-predicted_xgb)^2)) 
+(MSE_xgb <- mean((data.caret.test$int_rate-predicted_xgb)^2))
+(MSE_xgb <- mean((testData$int_rate-predicted_xgb)^2)) 
 ```
 
 ## try again
@@ -1403,9 +1506,36 @@ xgbGrid <-  expand.grid(nrounds = c(1750, 1900, 2000, 2100, 2250, 2500),
                         max_depth = c(4, 5, 6, 7, 8),
                         eta = c(0.3),
                         gamma = c(0),
-                        colsample_bytree = c(0.6, 1.0),
+                        colsample_bytree = c(1.0),
                         min_child_weight = c(5),
-                        subsample = c(0.6, 1))
+                        subsample = c(0.6))
+
+model_xgb.1 <- train(int_rate ~ .,
+                   data = trainData,
+                   method = "xgbTree",
+                   trControl = trainControl(method = "repeatedcv", 
+                                             number = 5, 
+                                             repeats = 1, 
+                                             verboseIter = TRUE),
+                   tuneGrid = xgbGrid,
+                   verbose = 1)
+model_xgb.1
+```
+
+
+## build it again
+
+```{r}
+set.seed(1)
+
+xgbGrid <-  expand.grid(nrounds = c(2000),
+                        max_depth = c(6),
+                        eta = c(0.3),
+                        gamma = c(0),
+                        colsample_bytree = c(1.0),
+                        min_child_weight = c(5),
+                        subsample = c(0.6))
+
 
 model_xgb.2 <- train(int_rate ~ .,
                    data = trainData,
@@ -1418,5 +1548,51 @@ model_xgb.2 <- train(int_rate ~ .,
                    verbose = 1)
 model_xgb.2
 ```
+Aggregating results
+Fitting final model on full training set
+eXtreme Gradient Boosting 
 
+558660 samples
+    41 predictor
+
+No pre-processing
+Resampling: Cross-Validated (5 fold, repeated 1 times) 
+Summary of sample sizes: 446929, 446929, 446928, 446927, 446927 
+Resampling results:
+
+  RMSE      Rsquared   MAE     
+  1.691543  0.8514549  1.275418
+
+Tuning parameter 'nrounds' was held constant at a value of 2000
+Tuning parameter 'max_depth' was held constant at a value of 6
+
+Tuning parameter 'colsample_bytree' was held constant at a value of 1
+Tuning parameter 'min_child_weight' was held constant
+ at a value of 5
+Tuning parameter 'subsample' was held constant at a value of 0.6
+```{r}
+model_xgb.2$bestTune
+```
+
+
+### save it
+```{r}
+saveRDS(model_xgb.2, file = "xgbModel_2.rds")
+saveRDS(model_xgb.2$finalModel, file = "xgbModel_2_finalModel.rds")
+```
+
+### test it
+```{r}
+predicted_xgb.2 <- predict(model_xgb.2, testData)
+```
+
+```{r}
+(MSE_xgb.2 <- mean((data.caret.test$int_rate-predicted_xgb.2)^2))
+(MSE_xgb <- mean((testData$int_rate-predicted_xgb.2)^2)) 
+```
+
+```{r}
+plot(predicted_xgb.2,testData$int_rate)
+abline (0,1)
+```
 

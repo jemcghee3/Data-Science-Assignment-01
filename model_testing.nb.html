@@ -1752,36 +1752,70 @@ display: none;
 
 
 <!-- rnb-text-begin -->
+<p>Here is cleaned up code to run our best model. Please edit the code
+in line 27 to load the secret data.</p>
+<div id="load-library" class="section level1">
+<h1>load library</h1>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubW9kZWwgPC0gcmVhZFJEUyhcIi4vMTUwMHRyZWVzR0JNLnJkc1wiKVxudHJhaW5EYXRhIDwtIHJlYWRSRFMoXCIuL3RyYWluRGF0YS5yZHNcIilcbnRlc3REYXRhIDwtIHJlYWRSRFMoXCIuL3Rlc3REYXRhLnJkc1wiKVxuYGBgIn0= -->
-<pre class="r"><code>model &lt;- readRDS(&quot;./1500treesGBM.rds&quot;)
-trainData &lt;- readRDS(&quot;./trainData.rds&quot;)
-testData &lt;- readRDS(&quot;./testData.rds&quot;)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJlZGljdGVkX2dibSA8LSBwcmVkaWN0KG1vZGVsLCB0ZXN0RGF0YSlcbmBgYCJ9 -->
-<pre class="r"><code>predicted_gbm &lt;- predict(model, testData)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuKE1TRV9nYm0gPC0gbWVhbigoZGF0YS5jYXJldC50ZXN0JGludF9yYXRlLXByZWRpY3RlZF9nYm0pXjIpKSBcblxuYGBgIn0= -->
-<pre class="r"><code>(MSE_gbm &lt;- mean((data.caret.test$int_rate-predicted_gbm)^2)) 
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShjYXJldClcblxuYGBgIn0= -->
+<pre class="r"><code>library(caret)
 </code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDIuMzEwMTQ2XG4ifQ== -->
-<pre><code>[1] 2.310146</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiTG9hZGluZyByZXF1aXJlZCBwYWNrYWdlOiBnZ3Bsb3QyXG5Mb2FkaW5nIHJlcXVpcmVkIHBhY2thZ2U6IGxhdHRpY2VcbiJ9 -->
+<pre><code>Loading required package: ggplot2
+Loading required package: lattice</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="model-with-split-and-preprocess-together" class="section level1">
+<h1>model with split and preprocess together</h1>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubW9kZWxfZGF0YSA8LSByZWFkUkRTKFwiLi9teV9kYXRhLnJkc1wiKVxubW9kZWxfeGdiIDwtIHJlYWRSRFMoXCIuL3hnYk1vZGVsLnJkc1wiKVxuXG5zZXQuc2VlZCgxKVxudHJhaW5EYXRhLmNhcmV0IDwtIHNhbXBsZSgxOm5yb3cobW9kZWxfZGF0YSksIDAuNypucm93KG1vZGVsX2RhdGEpKVxuZGF0YS5jYXJldC50cmFpbiA8LSBtb2RlbF9kYXRhW3RyYWluRGF0YS5jYXJldCxdXG5kYXRhLmNhcmV0LnRlc3QgPC0gbW9kZWxfZGF0YVstdHJhaW5EYXRhLmNhcmV0LF1cbnByZVByb2Nlc3NfbW9kZWwgPC0gcHJlUHJvY2VzcyhkYXRhLmNhcmV0LnRyYWluLCBtZXRob2Q9YyhcInNjYWxlXCIsIFwiY2VudGVyXCIsIFwiYmFnSW1wdXRlXCIsIFwibnp2XCIpKVxudGVzdERhdGEgPC0gcHJlZGljdChwcmVQcm9jZXNzX21vZGVsLCBuZXdkYXRhID0gZGF0YS5jYXJldC50ZXN0KVxuYGBgIn0= -->
+<pre class="r"><code>model_data &lt;- readRDS(&quot;./my_data.rds&quot;)
+model_xgb &lt;- readRDS(&quot;./xgbModel.rds&quot;)
+
+set.seed(1)
+trainData.caret &lt;- sample(1:nrow(model_data), 0.7*nrow(model_data))
+data.caret.train &lt;- model_data[trainData.caret,]
+data.caret.test &lt;- model_data[-trainData.caret,]
+preProcess_model &lt;- preProcess(data.caret.train, method=c(&quot;scale&quot;, &quot;center&quot;, &quot;bagImpute&quot;, &quot;nzv&quot;))
+testData &lt;- predict(preProcess_model, newdata = data.caret.test)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="apply-preprocess_model-to-the-test-data" class="section level1">
+<h1>Apply preProcess_model to the test data</h1>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBkYXRhLmNhcmV0LnRlc3QgPC0gcmVhZFJEUyhcIi4vc2VjcmV0X3Rlc3RfZGF0YS5yZHNcIilcbnRlc3REYXRhIDwtIHByZWRpY3QocHJlUHJvY2Vzc19tb2RlbCwgbmV3ZGF0YSA9IGRhdGEuY2FyZXQudGVzdClcblxuYGBgIn0= -->
+<pre class="r"><code># data.caret.test &lt;- readRDS(&quot;./secret_test_data.rds&quot;)
+testData &lt;- predict(preProcess_model, newdata = data.caret.test)
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="predict-y-on-test-set-and-calculate-mse" class="section level1">
+<h1>Predict Y on test set and calculate MSE</h1>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJlZGljdGVkX3hnYiA8LSBwcmVkaWN0KG1vZGVsX3hnYiwgdGVzdERhdGEpXG4oTVNFX3Rlc3QgPC0gbWVhbigoZGF0YS5jYXJldC50ZXN0JGludF9yYXRlLXByZWRpY3RlZF94Z2IpXjIpKSBcbmBgYCJ9 -->
+<pre class="r"><code>predicted_xgb &lt;- predict(model_xgb, testData)
+(MSE_test &lt;- mean((data.caret.test$int_rate-predicted_xgb)^2)) </code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDEuODg5OTM5XG4ifQ== -->
+<pre><code>[1] 1.889939</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
+</div>
 
-<div id="rmd-source-code">LS0tDQp0aXRsZTogIk1vZGVsIFRlc3RpbmciDQpvdXRwdXQ6IGh0bWxfbm90ZWJvb2sNCi0tLQ0KDQpgYGB7cn0NCm1vZGVsIDwtIHJlYWRSRFMoIi4vMTUwMHRyZWVzR0JNLnJkcyIpDQp0cmFpbkRhdGEgPC0gcmVhZFJEUygiLi90cmFpbkRhdGEucmRzIikNCmRhdGEuY2FyZXQudGVzdCA8LSByZWFkUkRTKCIuL2RhdGFDYXJldFRlc3QucmRzIikNCnRlc3REYXRhIDwtIHJlYWRSRFMoIi4vdGVzdERhdGEucmRzIikNCmBgYA0KDQpgYGB7cn0NCnByZWRpY3RlZF9nYm0gPC0gcHJlZGljdChtb2RlbCwgdGVzdERhdGEpDQpgYGANCg0KYGBge3J9DQooTVNFX2dibSA8LSBtZWFuKChkYXRhLmNhcmV0LnRlc3QkaW50X3JhdGUtcHJlZGljdGV1ZF9nYm0pXjIpKSANCmBgYA0KDQo=</div>
+<div id="rmd-source-code">LS0tDQp0aXRsZTogIk1vZGVsIFRlc3RpbmciDQpvdXRwdXQ6IGh0bWxfbm90ZWJvb2sNCi0tLQ0KSGVyZSBpcyBjbGVhbmVkIHVwIGNvZGUgdG8gcnVuIG91ciBiZXN0IG1vZGVsLiBQbGVhc2UgZWRpdCB0aGUgY29kZSBpbiBsaW5lIDI3IHRvIGxvYWQgdGhlIHNlY3JldCBkYXRhLg0KDQojIGxvYWQgbGlicmFyeQ0KYGBge3J9DQpsaWJyYXJ5KGNhcmV0KQ0KYGBgDQojIG1vZGVsIHdpdGggc3BsaXQgYW5kIHByZXByb2Nlc3MgdG9nZXRoZXINCmBgYHtyfQ0KbW9kZWxfZGF0YSA8LSByZWFkUkRTKCIuL215X2RhdGEucmRzIikNCm1vZGVsX3hnYiA8LSByZWFkUkRTKCIuL3hnYk1vZGVsLnJkcyIpDQoNCnNldC5zZWVkKDEpDQp0cmFpbkRhdGEuY2FyZXQgPC0gc2FtcGxlKDE6bnJvdyhtb2RlbF9kYXRhKSwgMC43Km5yb3cobW9kZWxfZGF0YSkpDQpkYXRhLmNhcmV0LnRyYWluIDwtIG1vZGVsX2RhdGFbdHJhaW5EYXRhLmNhcmV0LF0NCmRhdGEuY2FyZXQudGVzdCA8LSBtb2RlbF9kYXRhWy10cmFpbkRhdGEuY2FyZXQsXQ0KcHJlUHJvY2Vzc19tb2RlbCA8LSBwcmVQcm9jZXNzKGRhdGEuY2FyZXQudHJhaW4sIG1ldGhvZD1jKCJzY2FsZSIsICJjZW50ZXIiLCAiYmFnSW1wdXRlIiwgIm56diIpKQ0KdGVzdERhdGEgPC0gcHJlZGljdChwcmVQcm9jZXNzX21vZGVsLCBuZXdkYXRhID0gZGF0YS5jYXJldC50ZXN0KQ0KYGBgDQoNCg0KIyBBcHBseSBwcmVQcm9jZXNzX21vZGVsIHRvIHRoZSB0ZXN0IGRhdGENCmBgYHtyfQ0KIyBkYXRhLmNhcmV0LnRlc3QgPC0gcmVhZFJEUygiLi9zZWNyZXRfdGVzdF9kYXRhLnJkcyIpDQp0ZXN0RGF0YSA8LSBwcmVkaWN0KHByZVByb2Nlc3NfbW9kZWwsIG5ld2RhdGEgPSBkYXRhLmNhcmV0LnRlc3QpDQoNCmBgYA0KDQojIFByZWRpY3QgWSBvbiB0ZXN0IHNldCBhbmQgY2FsY3VsYXRlIE1TRQ0KYGBge3J9DQpwcmVkaWN0ZWRfeGdiIDwtIHByZWRpY3QobW9kZWxfeGdiLCB0ZXN0RGF0YSkNCihNU0VfdGVzdCA8LSBtZWFuKChkYXRhLmNhcmV0LnRlc3QkaW50X3JhdGUtcHJlZGljdGVkX3hnYileMikpIA0KYGBgDQoNCg==</div>
 
 
 

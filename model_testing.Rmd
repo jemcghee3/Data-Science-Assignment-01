@@ -2,19 +2,36 @@
 title: "Model Testing"
 output: html_notebook
 ---
+Here is cleaned up code to run our best model. Please edit the code in line 27 to load the secret data.
 
+# load library
 ```{r}
-model <- readRDS("./1500treesGBM.rds")
-trainData <- readRDS("./trainData.rds")
-data.caret.test <- readRDS("./dataCaretTest.rds")
-testData <- readRDS("./testData.rds")
+library(caret)
+```
+# model with split and preprocess together
+```{r}
+model_data <- readRDS("./my_data.rds")
+model_xgb <- readRDS("./xgbModel.rds")
+
+set.seed(1)
+trainData.caret <- sample(1:nrow(model_data), 0.7*nrow(model_data))
+data.caret.train <- model_data[trainData.caret,]
+data.caret.test <- model_data[-trainData.caret,]
+preProcess_model <- preProcess(data.caret.train, method=c("scale", "center", "bagImpute", "nzv"))
+testData <- predict(preProcess_model, newdata = data.caret.test)
 ```
 
+
+# Apply preProcess_model to the test data
 ```{r}
-predicted_gbm <- predict(model, testData)
+# data.caret.test <- readRDS("./secret_test_data.rds")
+testData <- predict(preProcess_model, newdata = data.caret.test)
+
 ```
 
+# Predict Y on test set and calculate MSE
 ```{r}
-(MSE_gbm <- mean((data.caret.test$int_rate-predicteud_gbm)^2)) 
+predicted_xgb <- predict(model_xgb, testData)
+(MSE_test <- mean((data.caret.test$int_rate-predicted_xgb)^2)) 
 ```
 
